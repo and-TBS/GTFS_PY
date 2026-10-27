@@ -2,4 +2,4 @@ streamlit>=1.35.0
 pandas
 geopandas
 folium
-# forza aggiornamento ambiente
+# forzaa aggiornamento ambiente
