@@ -171,23 +171,4 @@ if os.path.exists(calendar_dates_path):
             if exc_type == 1:
                 service_active_days[s_id].add(dt)
             elif exc_type == 2:
-                service_active_days[s_id].discard(dt)
-        except Exception:
-            pass
-
-def get_giorni_validita(service_id):
-    return len(service_active_days.get(service_id, []))
-
-trips['giorni_validita'] = trips['service_id'].apply(get_giorni_validita)
-
-# Elaborazione capolinea, orari e Comuni di partenza/arrivo
-stop_times['stop_sequence'] = pd.to_numeric(stop_times['stop_sequence'])
-stop_times = stop_times.sort_values(['trip_id', 'stop_sequence'])
-
-first_stops = stop_times.groupby('trip_id').first().reset_index()[['trip_id', 'stop_id', 'departure_time']]
-first_stops.rename(columns={'stop_id': 'start_stop_id'}, inplace=True)
-last_stops = stop_times.groupby('trip_id').last().reset_index()[['trip_id', 'stop_id', 'arrival_time']]
-last_stops.rename(columns={'stop_id': 'end_stop_id'}, inplace=True)
-
-trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
-stops_
+                service_active_days
