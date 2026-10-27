@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Iniezione CSS personalizzato per box e dimensionamento pulsanti icona
+# Iniezione CSS personalizzato per box, pulsanti e testi compatti
 st.markdown("""
 <style>
     .info-box {
@@ -31,10 +31,17 @@ st.markdown("""
     /* Pulsanti a icona ingranditi, centrati e perfettamente visibili */
     .stButton > button {
         width: 100% !important;
-        padding: 4px 0px !important;
-        font-size: 16px !important;
-        min-height: 38px !important;
+        padding: 2px 0px !important;
+        font-size: 15px !important;
+        min-height: 34px !important;
+        max-height: 36px !important;
         border-radius: 6px !important;
+    }
+    /* Stile compatto per i testi delle tabelle interattive */
+    .table-text {
+        font-size: 12px !important;
+        color: #1e293b;
+        line-height: 1.3;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -350,14 +357,14 @@ elif tipo_vista == "🏙️ Analisi per Comune":
 
     if not corse_target.empty:
         for _, row in corse_target.iterrows():
-            c1, c2, c3, c4, c5 = st.columns([1.1, 2, 2.5, 2.5, 1])
+            c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
             if c1.button("🔍", key=f"com_{row['trip_id']}_{filtro_tipo}"):
                 st.session_state.selected_trip_id = row['trip_id']
                 st.rerun()
-            c2.write(f"**{row['linea']}** 🕒 {row.get('departure_time', row.get('arrival_time', ''))}")
-            c3.write(f"Da: {row['fermata_partenza']}")
-            c4.write(f"A: {row['fermata_arrivo']}")
-            c5.write(f"📅 {row['giorni_validita']}g")
+            c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row.get('departure_time', row.get('arrival_time', ''))}</span>", unsafe_allow_html=True)
+            c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+            c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+            c5.markdown(f"<span class='table-text'>📅 {row['giorni_validita']}g</span>", unsafe_allow_html=True)
     else:
         st.info("Nessuna corsa trovata per i criteri selezionati in questo comune.")
 
@@ -369,107 +376,4 @@ else:
             
             st.markdown(f"""
             <div class="info-box">
-                <b>🕒 Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-                <b>🏁 Arrivo:</b> {corsa_info['fermata_arrivo']} ({corsa_info['comune_arrivo']}) alle {corsa_info['arrival_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-                <b>📅 Giorni validità:</b> {corsa_info['giorni_validita']} giorni
-            </div>
-            """, unsafe_allow_html=True)
-
-            st_trip = stop_times[stop_times['trip_id'] == trip_id_selezionato].sort_values('stop_sequence')
-            path_stops = pd.merge(st_trip, stops_unique, on='stop_id')
-
-            if not path_stops.empty:
-                col_left, col_right = st.columns([1.1, 1.3])
-                with col_left:
-                    st.markdown("##### 📋 Fermate e Orari di Passaggio")
-                    df_tab_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
-                    df_tab_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=720)
-                with col_right:
-                    st.markdown(f"##### 🗺️ Mappa Percorso (Linea {linea_scelta})")
-                    centro_lat, centro_lon = path_stops['stop_lat'].mean(), path_stops['stop_lon'].mean()
-                    m = folium.Map(location=[centro_lat, centro_lon], zoom_start=12, tiles="Esri.WorldStreetMap")
-                    coords = path_stops[['stop_lat', 'stop_lon']].values.tolist()
-                    folium.PolyLine(coords, color="blue", weight=4, opacity=0.8).add_to(m)
-                    for _, row in path_stops.iterrows():
-                        folium.Marker(
-                            location=[row['stop_lat'], row['stop_lon']],
-                            popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
-                            icon=folium.Icon(color='red', icon='bus', prefix='fa')
-                        ).add_to(m)
-                    st.components.v1.html(m._repr_html_(), height=720)
-        else:
-            st.info("Seleziona una linea e una corsa dalla barra laterale.")
-
-    elif modalità_classica == "🌐 Intera Linea":
-        if linea_scelta:
-            st.markdown(f"#### 🌐 Panoramica Linea: **{linea_scelta}** (Operatore: {operatore_scelto})")
-            col_left, col_right = st.columns([1.4, 1.1])
-            with col_left:
-                st.markdown("##### 📋 Elenco corse della linea")
-                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
-                
-                with st.container(height=720):
-                    if not df_linea.empty:
-                        for _, row in df_linea.iterrows():
-                            c1, c2, c3, c4, c5 = st.columns([1.1, 1.8, 2.8, 1.8, 2.8])
-                            if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
-                                st.session_state.selected_trip_id = row['trip_id']
-                                st.rerun()
-                            c2.write(f"🕒 {row['departure_time']}")
-                            c3.write(f"Da: {row['fermata_partenza']}")
-                            c4.write(f"🏁 {row['arrival_time']}")
-                            c5.write(f"A: {row['fermata_arrivo']}")
-                    else:
-                        st.info("Nessuna corsa disponibile per questa linea.")
-            with col_right:
-                st.markdown("##### 🗺️ Mappa Cumulativa Linea")
-                trip_ids = df_linea['trip_id'].tolist()
-                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
-                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
-                if not path_all.empty:
-                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
-                    for t_id in trip_ids[:15]:
-                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
-                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
-                        if len(p_t) > 1:
-                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
-                    st.components.v1.html(m_lin._repr_html_(), height=720)
-        else:
-            st.info("Seleziona una linea valida.")
-
-    else:
-        if operatore_scelto:
-            st.markdown(f"#### 🏢 Panoramica Operatore: **{operatore_scelto}**")
-            col_left, col_right = st.columns([1.4, 1.1])
-            with col_left:
-                st.markdown("##### 📋 Elenco corse operatore")
-                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
-                
-                with st.container(height=720):
-                    if not df_op.empty:
-                        for _, row in df_op.iterrows():
-                            c1, c2, c3, c4, c5, c6 = st.columns([1.1, 1.5, 1.8, 2.5, 1.8, 2.5])
-                            if c1.button("🔍", key=f"op_btn_{row['trip_id']}"):
-                                st.session_state.selected_trip_id = row['trip_id']
-                                st.rerun()
-                            c2.write(f"**{row['linea']}**")
-                            c3.write(f"🕒 {row['departure_time']}")
-                            c4.write(f"Da: {row['fermata_partenza']}")
-                            c5.write(f"🏁 {row['arrival_time']}")
-                            c6.write(f"A: {row['fermata_arrivo']}")
-                    else:
-                        st.info("Nessuna corsa disponibile per questo operatore.")
-            with col_right:
-                st.markdown("##### 🗺️ Mappa Globale Operatore")
-                trip_ids_op = df_op['trip_id'].tolist()
-                st_op_all = stop_times[stop_times['trip_id'].isin(trip_ids_op)]
-                path_op = pd.merge(st_op_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
-                if not path_op.empty:
-                    m_op = folium.Map(location=[path_op['stop_lat'].mean(), path_op['stop_lon'].mean()], zoom_start=10, tiles="Esri.WorldStreetMap")
-                    for t_id in trip_ids_op[:20]:
-                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
-                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
-                        if len(p_t) > 1:
-                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="green", weight=2, opacity=0.4).add_to(m_op)
-                    st.components.v1.html(m_op._repr_html_(), height=720)
+                <b>🕒 Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&
