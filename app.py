@@ -404,40 +404,4 @@ else:
                             popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
                             icon=folium.Icon(color='red', icon='bus', prefix='fa')
                         ).add_to(m)
-                    st.components.v1.html(m._repr_html_(), height=720)
-        else:
-            st.info("Seleziona una linea e una corsa dalla barra laterale.")
-
-    elif modalità_classica == "🌐 Intera Linea":
-        if linea_scelta:
-            st.markdown(f"#### 🌐 Panoramica Linea: **{linea_scelta}** (Operatore: {operatore_scelto})")
-            col_left, col_right = st.columns([1.4, 1.1])
-            with col_left:
-                st.markdown("##### 📋 Elenco corse della linea")
-                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
-                
-                with st.container(height=720):
-                    if not df_linea.empty:
-                        for _, row in df_linea.iterrows():
-                            c1, c2, c3, c4, c5 = st.columns([0.8, 1.8, 3.2, 1.8, 3.2])
-                            if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
-                                st.session_state.selected_trip_id = row['trip_id']
-                                st.rerun()
-                            c2.markdown(f"<span class='table-text'>🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
-                            c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                            c4.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
-                            c5.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    else:
-                        st.info("Nessuna corsa disponibile per questa linea.")
-            with col_right:
-                st.markdown("##### 🗺️ Mappa Cumulativa Linea")
-                trip_ids = df_linea['trip_id'].tolist()
-                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
-                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
-                if not path_all.empty:
-                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
-                    for t_id in trip_ids[:15]:
-                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
-                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
-                        if len(p_t) > 1:
-                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].
+                    st.components.v1.html(m._repr_html_(), height=72
