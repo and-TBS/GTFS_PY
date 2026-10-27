@@ -1,0 +1,17 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang
+SGA0004,A.t.a.p. - Azienda Trasporti Automobilistici Pubblici Delle Province Di Biella E Vercelli - S.p.a.,http://www.atapspa.it,Europe/Rome,it
+SGA0136,Sun S.p.a.,http://www.sun.novara.it,Europe/Rome,it
+SGA0193,Navigazione Lago D'orta S.r.l.,http://www.navigazionelagodorta.it,Europe/Rome,it
+SGA0126,Societa' Trasporti Novaresi - S.r.l.,http://www.stnnet.it,Europe/Rome,it
+SGA0194,Coas Consorzio Astigiano,http://www.consorziocoas.it,Europe/Rome,it
+SGA0207,Granda Bus,http://www.grandabus.it,Europe/Rome,it
+SGA0234,Comune Druogno,n.d.,Europe/Rome,it
+SGA0010,Asti Servizi Pubblici S.p.a.,http://www.asp.asti.it,Europe/Rome,it
+SGA0139,V.c.o. Trasporti Srl,http://www.vcotrasporti.it,Europe/Rome,it
+SGA0124,S.t.a.c. Societa' Trasporti Automobilistici Casalesi Srl,http://www.via pier enrico motta,Europe/Rome,it
+SGA0120,S.a.f. Societa' Autoservizi Fontaneto S.r.l.,http://www.safduemila.com,Europe/Rome,it
+SGA0200,Societa' Consortile Alessandrina Trasporti A Responsabilita' Limitata,http://www.sc-alessandrinatrasporti.it,Europe/Rome,it
+SGA0001,Azienda Multiservizi Casalese S.p.a. E Piu' Brevemente A.m.c. S.p.a,http://www.amcasale.it,Europe/Rome,it
+SGA0040,Autoservizi Comazzi S.r.l.,http://www.comazzibus.com,Europe/Rome,it
+SGA0224,Extra.to S.c. A R.l.,http://www.extrato.it,Europe/Rome,it
+9999,n.d.,n.d.,Europe/Rome,it
