@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Iniezione CSS personalizzato per i box informativi
+# Iniezione CSS personalizzato per i box informativi e consistenza font
 st.markdown("""
 <style>
     .info-box {
@@ -27,6 +27,10 @@ st.markdown("""
         margin-bottom: 20px;
         color: #1e293b;
         font-size: 14px;
+    }
+    .row-text {
+        font-size: 14px;
+        color: #1e293b;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -285,7 +289,7 @@ if is_corsa_cliccata:
             st.markdown("##### 📋 Fermate e Orari di Passaggio")
             df_tabella_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
             df_tabella_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-            st.dataframe(df_tabella_fermate, use_container_width=True, hide_index=True, height=620)
+            st.dataframe(df_tabella_fermate, use_container_width=True, hide_index=True, height=720)
             
         with col_right:
             st.markdown(f"##### 🗺️ Mappa Percorso (Linea {linea_corrente})")
@@ -306,13 +310,13 @@ if is_corsa_cliccata:
                 ).add_to(m)
                 
             map_html = m._repr_html_()
-            st.components.v1.html(map_html, height=620)
+            st.components.v1.html(map_html, height=720)
     else:
         st.warning("Nessuna coordinata trovata per questa corsa.")
 
 elif tipo_vista == "🏙️ Analisi per Comune":
     st.markdown(f"### 🏙️ Analisi per il Comune: **{comune_scelto}**")
-    st.markdown("Filtra le corse per tipologia e clicca su **🔍 Percorso** per aprire la mappa dettagliata.")
+    st.markdown("Filtra le corse per tipologia e clicca su **🔍** per aprire la mappa dettagliata.")
 
     filtro_tipo = st.radio(
         "Seleziona tipologia corse:",
@@ -342,14 +346,14 @@ elif tipo_vista == "🏙️ Analisi per Comune":
 
     if not corse_target.empty:
         for _, row in corse_target.iterrows():
-            c1, c2, c3, c4, c5 = st.columns([1, 2, 2, 2, 1])
-            c1.write(f"**{row['linea']}**")
-            c2.write(f"🕒 {row.get('departure_time', row.get('arrival_time', ''))}")
-            c3.write(f"Da: {row['fermata_partenza']}")
-            c4.write(f"A: {row['fermata_arrivo']}")
-            if c5.button("🔍 Percorso", key=f"com_{row['trip_id']}_{filtro_tipo}"):
+            c1, c2, c3, c4, c5 = st.columns([0.6, 2, 2.5, 2.5, 1])
+            if c1.button("🔍", key=f"com_{row['trip_id']}_{filtro_tipo}"):
                 st.session_state.selected_trip_id = row['trip_id']
                 st.rerun()
+            c2.write(f"**{row['linea']}** 🕒 {row.get('departure_time', row.get('arrival_time', ''))}")
+            c3.write(f"Da: {row['fermata_partenza']}")
+            c4.write(f"A: {row['fermata_arrivo']}")
+            c5.write(f"📅 {row['giorni_validita']}g")
     else:
         st.info("Nessuna corsa trovata per i criteri selezionati in questo comune.")
 
@@ -376,7 +380,7 @@ else:
                     st.markdown("##### 📋 Fermate e Orari di Passaggio")
                     df_tab_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
                     df_tab_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=620)
+                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=720)
                 with col_right:
                     st.markdown(f"##### 🗺️ Mappa Percorso (Linea {linea_scelta})")
                     centro_lat, centro_lon = path_stops['stop_lat'].mean(), path_stops['stop_lon'].mean()
@@ -389,7 +393,7 @@ else:
                             popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
                             icon=folium.Icon(color='red', icon='bus', prefix='fa')
                         ).add_to(m)
-                    st.components.v1.html(m._repr_html_(), height=620)
+                    st.components.v1.html(m._repr_html_(), height=720)
         else:
             st.info("Seleziona una linea e una corsa dalla barra laterale.")
 
@@ -399,14 +403,13 @@ else:
             col_left, col_right = st.columns([1.3, 1.1])
             with col_left:
                 st.markdown("##### 📋 Elenco corse della linea")
-                st.markdown("Clicca su **🔍 Dettagli** per visualizzare il percorso della singola corsa.")
+                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
                 
-                # Contenitore scrollabile con pulsanti ad inizio riga
-                with st.container(height=520):
+                with st.container(height=620):
                     if not df_linea.empty:
                         for _, row in df_linea.iterrows():
-                            c1, c2, c3, c4, c5 = st.columns([1, 1.5, 2.5, 1.5, 2.5])
-                            if c1.button("🔍 Dettagli", key=f"linea_btn_{row['trip_id']}"):
+                            c1, c2, c3, c4, c5 = st.columns([0.6, 1.5, 3, 1.5, 3])
+                            if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
                                 st.session_state.selected_trip_id = row['trip_id']
                                 st.rerun()
                             c2.write(f"🕒 {row['departure_time']}")
@@ -427,19 +430,32 @@ else:
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
-                    st.components.v1.html(m_lin._repr_html_(), height=520)
+                    st.components.v1.html(m_lin._repr_html_(), height=720)
         else:
             st.info("Seleziona una linea valida.")
 
     else:
         if operatore_scelto:
             st.markdown(f"#### 🏢 Panoramica Operatore: **{operatore_scelto}**")
-            col_left, col_right = st.columns([1.2, 1.2])
+            col_left, col_right = st.columns([1.3, 1.1])
             with col_left:
                 st.markdown("##### 📋 Elenco corse operatore")
-                df_tab_op = df_op[['linea', 'departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
-                df_tab_op.columns = ['Linea', 'Partenza', 'Da', 'Comune', 'Arrivo', 'A', 'Giorni Validità']
-                st.dataframe(df_tab_op, use_container_width=True, hide_index=True, height=450)
+                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
+                
+                with st.container(height=620):
+                    if not df_op.empty:
+                        for _, row in df_op.iterrows():
+                            c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.2, 1.5, 2.5, 1.5, 2.5])
+                            if c1.button("🔍", key=f"op_btn_{row['trip_id']}"):
+                                st.session_state.selected_trip_id = row['trip_id']
+                                st.rerun()
+                            c2.write(f"**{row['linea']}**")
+                            c3.write(f"🕒 {row['departure_time']}")
+                            c4.write(f"Da: {row['fermata_partenza']}")
+                            c5.write(f"🏁 {row['arrival_time']}")
+                            c6.write(f"A: {row['fermata_arrivo']}")
+                    else:
+                        st.info("Nessuna corsa disponibile per questo operatore.")
             with col_right:
                 st.markdown("##### 🗺️ Mappa Globale Operatore")
                 trip_ids_op = df_op['trip_id'].tolist()
@@ -452,4 +468,4 @@ else:
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="green", weight=2, opacity=0.4).add_to(m_op)
-                    st.components.v1.html(m_op._repr_html_(), height=620)
+                    st.components.v1.html(m_op._repr_html_(), height=720)
