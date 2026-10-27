@@ -14,10 +14,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Iniezione CSS personalizzato (Punto 4)
+# Iniezione CSS personalizzato per i box informativi
 st.markdown("""
 <style>
-    /* Box informativi moderni con bordo arrotondato e accento colorato */
     .info-box {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
@@ -267,7 +266,6 @@ if is_corsa_cliccata:
     corsa_info = trip_full[trip_full['trip_id'] == trip_id_corrente].iloc[0]
     linea_corrente = corsa_info['linea']
 
-    # Utilizzo del box CSS personalizzato (.info-box)
     st.markdown(f"""
     <div class="info-box">
         <b>🚍 Linea:</b> {linea_corrente} &nbsp;&nbsp;|&nbsp;&nbsp;
@@ -398,19 +396,25 @@ else:
     elif modalità_classica == "🌐 Intera Linea":
         if linea_scelta:
             st.markdown(f"#### 🌐 Panoramica Linea: **{linea_scelta}** (Operatore: {operatore_scelto})")
-            col_left, col_right = st.columns([1.2, 1.2])
+            col_left, col_right = st.columns([1.3, 1.1])
             with col_left:
-                st.markdown("##### 📋 Elenco corse")
-                df_tab_corse = df_linea[['departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
-                df_tab_corse.columns = ['Partenza', 'Da', 'Comune Origine', 'Arrivo', 'A', 'Giorni Validità']
-                st.dataframe(df_tab_corse, use_container_width=True, hide_index=True, height=450)
+                st.markdown("##### 📋 Elenco corse della linea")
+                st.markdown("Clicca su **🔍 Dettagli** per visualizzare il percorso della singola corsa.")
                 
-                df_linea['descrizione_scelta'] = df_linea['departure_time'] + " - " + df_linea['fermata_partenza'] + " ➔ " + df_linea['fermata_arrivo']
-                corsa_sel = st.selectbox("Seleziona corsa da approfondire:", df_linea['descrizione_scelta'].tolist())
-                if st.button("🔍 Mostra dettagli corsa"):
-                    t_id = df_linea[df_linea['descrizione_scelta'] == corsa_sel]['trip_id'].values[0]
-                    st.session_state.selected_trip_id = t_id
-                    st.rerun()
+                # Contenitore scrollabile con pulsanti ad inizio riga
+                with st.container(height=520):
+                    if not df_linea.empty:
+                        for _, row in df_linea.iterrows():
+                            c1, c2, c3, c4, c5 = st.columns([1, 1.5, 2.5, 1.5, 2.5])
+                            if c1.button("🔍 Dettagli", key=f"linea_btn_{row['trip_id']}"):
+                                st.session_state.selected_trip_id = row['trip_id']
+                                st.rerun()
+                            c2.write(f"🕒 {row['departure_time']}")
+                            c3.write(f"Da: {row['fermata_partenza']}")
+                            c4.write(f"🏁 {row['arrival_time']}")
+                            c5.write(f"A: {row['fermata_arrivo']}")
+                    else:
+                        st.info("Nessuna corsa disponibile per questa linea.")
             with col_right:
                 st.markdown("##### 🗺️ Mappa Cumulativa Linea")
                 trip_ids = df_linea['trip_id'].tolist()
@@ -423,7 +427,7 @@ else:
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
-                    st.components.v1.html(m_lin._repr_html_(), height=620)
+                    st.components.v1.html(m_lin._repr_html_(), height=520)
         else:
             st.info("Seleziona una linea valida.")
 
@@ -433,7 +437,6 @@ else:
             col_left, col_right = st.columns([1.2, 1.2])
             with col_left:
                 st.markdown("##### 📋 Elenco corse operatore")
-                # Aggiunta dei giorni di validità anche nella tabella dell'operatore
                 df_tab_op = df_op[['linea', 'departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
                 df_tab_op.columns = ['Linea', 'Partenza', 'Da', 'Comune', 'Arrivo', 'A', 'Giorni Validità']
                 st.dataframe(df_tab_op, use_container_width=True, hide_index=True, height=450)
