@@ -63,10 +63,15 @@ if gdf_comuni is not None and not stops.empty:
         )
         fermate_geo = gpd.sjoin(gdf_stops, gdf_comuni, how="left", predicate="within").drop_duplicates(subset=['stop_id'])
         
-        col_comune = next((c for c in ['COMUNE', 'comune', 'Nome_Com', 'COM_NAME', 'DEN_COM', 'NAME_3'] if c in fermate_geo.columns), None)
-        col_prov = next((c for c in ['SIGLA', 'DEN_PROV', 'PROVINCIA', 'provincia', 'Sigla Prov', 'COD_PROV'] if c in fermate_geo.columns), None)
+        col_comune = next((c for c in ['COMUNE', 'comune', 'Nome_Com', 'COM_NAME', 'DEN_COM', 'NAME_3', 'COMUNE_ISTAT', 'COM'] if c in fermate_geo.columns), None)
+        col_prov = next((c for c in ['SIGLA', 'DEN_PROV', 'PROVINCIA', 'provincia', 'Sigla Prov', 'COD_PROV', 'PROV'] if c in fermate_geo.columns), None)
         
-        stops['comune'] = fermate_geo[col_comune].values if col_comune else "N.D."
+        if col_comune:
+            stops['comune'] = fermate_geo[col_comune].values
+        else:
+            cols_testuali = [c for c in gdf_comuni.columns if c != 'geometry' and gdf_comuni[c].dtype == 'object']
+            stops['comune'] = fermate_geo[cols_testuali[0]].values if cols_testuali else "N.D."
+
         stops['provincia'] = fermate_geo[col_prov].values if col_prov else "N.D."
     except Exception:
         stops['comune'] = "N.D."
@@ -142,7 +147,6 @@ last_stops.rename(columns={'stop_id': 'end_stop_id'}, inplace=True)
 trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
 stops_unique = stops.drop_duplicates(subset=['stop_id'])
 
-# Unione per ricavare nome fermata e Comune di Partenza/Arrivo
 trip_endpoints = pd.merge(
     trip_endpoints, 
     stops_unique[['stop_id', 'stop_name', 'comune']], 
@@ -185,7 +189,7 @@ if modalità != "🏢 Intero Operatore":
     df_linea = df_op[df_op['linea'] == linea_scelta].sort_values('departure_time')
 
     # --- FILTRO COMUNE DI PARTENZA ---
-    comuni_partenza_disponibili = ["Tutti"] + sorted([c for c in df_linea['comune_partenza'].dropna().unique() if c != "N.D."])
+    comuni_partenza_disponibili = ["Tutti"] + sorted([str(c) for c in df_linea['comune_partenza'].dropna().unique() if c != "N.D."])
     comune_filtro = st.sidebar.selectbox("🏙️ Partenza da (Comune):", comuni_partenza_disponibili)
     
     if comune_filtro != "Tutti":
@@ -193,7 +197,7 @@ if modalità != "🏢 Intero Operatore":
 
     if modalità == "🔍 Corsa Singola":
         if not df_linea.empty:
-            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'] + ")"
+            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ")"
             corse_disponibili = df_linea['descrizione_corsa'].tolist()
             corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
             trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
@@ -332,7 +336,7 @@ elif modalità == "🌐 Intera Linea":
         st.dataframe(df_tabella_corse, use_container_width=True, hide_index=True, height=340)
         
         if not df_linea.empty:
-            df_linea['descrizione_scelta'] = df_linea['departure_time'] + " - " + df_linea['fermata_partenza'] + " (" + df_linea['comune_partenza'] + ") ➔ " + df_linea['fermata_arrivo']
+            df_linea['descrizione_scelta'] = df_linea['departure_time'] + " - " + df_linea['fermata_partenza'] + " (" + df_linea['comune_partenza'].astype(str) + ") ➔ " + df_linea['fermata_arrivo']
             corsa_selezionata_tendina = st.selectbox("Seleziona corsa da approfondire:", df_linea['descrizione_scelta'].tolist())
             
             if st.button("🔍 Mostra dettagli corsa"):
