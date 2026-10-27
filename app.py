@@ -53,26 +53,49 @@ def carica_geojson(filepath):
 routes, trips, stop_times, stops, agency = carica_dati_gtfs()
 gdf_comuni = carica_geojson(GEOJSON_FILE)
 
-# --- ASSOCIAZIONE GEOGRAFICA FERMATE -> COMUNI ---
+# --- ASSOCIAZIONE GEOGRAFICA FERMATE -> COMUNI (CORRETTA) ---
 if gdf_comuni is not None and not stops.empty:
     try:
+        if gdf_comuni.crs != "EPSG:4326":
+            gdf_comuni = gdf_comuni.to_crs("EPSG:4326")
+
         gdf_stops = gpd.GeoDataFrame(
             stops.copy(), 
             geometry=gpd.points_from_xy(stops.stop_lon, stops.stop_lat), 
             crs="EPSG:4326"
         )
-        fermate_geo = gpd.sjoin(gdf_stops, gdf_comuni, how="left", predicate="within").drop_duplicates(subset=['stop_id'])
         
-        col_comune = next((c for c in ['COMUNE', 'comune', 'Nome_Com', 'COM_NAME', 'DEN_COM', 'NAME_3', 'COMUNE_ISTAT', 'COM'] if c in fermate_geo.columns), None)
-        col_prov = next((c for c in ['SIGLA', 'DEN_PROV', 'PROVINCIA', 'provincia', 'Sigla Prov', 'COD_PROV', 'PROV'] if c in fermate_geo.columns), None)
+        # Eseguiamo il spatial join
+        fermate_geo = gpd.sjoin(gdf_stops, gdf_comuni, how="left", predicate="within")
+        fermate_geo = fermate_geo.drop_duplicates(subset=['stop_id'])
         
-        if col_comune:
-            stops['comune'] = fermate_geo[col_comune].values
-        else:
+        col_comune = next((c for c in ['comune', 'COMUNE', 'Nome_Com', 'COM_NAME', 'DEN_COM', 'NAME_3', 'COMUNE_ISTAT', 'COM'] if c in fermate_geo.columns), None)
+        col_prov = next((c for c in ['provincia', 'SIGLA', 'DEN_PROV', 'PROVINCIA', 'Sigla Prov', 'COD_PROV', 'PROV'] if c in fermate_geo.columns), None)
+        
+        if not col_comune:
             cols_testuali = [c for c in gdf_comuni.columns if c != 'geometry' and gdf_comuni[c].dtype == 'object']
-            stops['comune'] = fermate_geo[cols_testuali[0]].values if cols_testuali else "N.D."
+            col_comune = cols_testuali[0] if cols_testuali else None
 
-        stops['provincia'] = fermate_geo[col_prov].values if col_prov else "N.D."
+        # Creazione DataFrame di supporto e merge sicuro basato su stop_id
+        cols_to_keep = ['stop_id']
+        rename_map = {}
+        if col_comune:
+            cols_to_keep.append(col_comune)
+            rename_map[col_comune] = 'comune_target'
+        if col_prov:
+            cols_to_keep.append(col_prov)
+            rename_map[col_prov] = 'provincia_target'
+            
+        sub_geo = fermate_geo[[c for c in cols_to_keep if c in fermate_geo.columns]].copy()
+        sub_geo = sub_geo.rename(columns=rename_map)
+        
+        stops = pd.merge(stops, sub_geo, on='stop_id', how='left')
+        stops['comune'] = stops['comune_target'].fillna("N.D.") if 'comune_target' in stops.columns else "N.D."
+        stops['provincia'] = stops['provincia_target'].fillna("N.D.") if 'provincia_target' in stops.columns else "N.D."
+        
+        if 'comune_target' in stops.columns: stops.drop(columns=['comune_target'], inplace=True)
+        if 'provincia_target' in stops.columns: stops.drop(columns=['provincia_target'], inplace=True)
+
     except Exception:
         stops['comune'] = "N.D."
         stops['provincia'] = "N.D."
