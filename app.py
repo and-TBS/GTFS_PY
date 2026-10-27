@@ -16,7 +16,7 @@ st.set_page_config(
 
 # Intestazione compatta
 st.markdown("### 🚌 Dashboard Tratta e Orari GTFS")
-st.markdown("<p style='color: gray; font-size: 13px;'>Analizza le singole corse, l'intera offerta di una linea o tutte le corse di un operatore. Clicca su una riga della tabella per approfondire la corsa.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: gray; font-size: 13px;'>Analizza le singole corse, l'intera offerta di una linea o tutte le corse di un operatore. Usa i filtri per approfondire la corsa.</p>", unsafe_allow_html=True)
 
 GTFS_DIR = "."
 GEOJSON_FILE = "Italia.geojson"
@@ -155,7 +155,7 @@ if modalità != "🏢 Intero Operatore":
         trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
 
 # ==========================================
-# GESTIONE STATO PER CLIC SULLA TABELLA
+# GESTIONE STATO PER APPROFONDIMENTO CORSA
 # ==========================================
 if "selected_trip_id" not in st.session_state:
     st.session_state.selected_trip_id = None
@@ -165,14 +165,12 @@ if "last_modalita" not in st.session_state or st.session_state.last_modalita != 
     st.session_state.selected_trip_id = None
     st.session_state.last_modalita = modalità
 
-# Se è stato selezionato un trip dalla tabella, forziamo la visualizzazione della corsa singola
 is_corsa_cliccata = st.session_state.selected_trip_id is not None
 
 # ==========================================
 # PANNELLO PRINCIPALE
 # ==========================================
 if is_corsa_cliccata:
-    # Pulsante per tornare indietro alla panoramica
     if st.button("⬅️ Torna alla panoramica precedente"):
         st.session_state.selected_trip_id = None
         st.rerun()
@@ -243,7 +241,6 @@ if is_corsa_cliccata:
         st.warning("Nessuna coordinata trovata per questa corsa.")
 
 elif modalità == "🔍 Corsa Singola":
-    # --- MODALITÀ CORSA SINGOLA STANDARD ---
     corsa_info = df_linea[df_linea['trip_id'] == trip_id_selezionato].iloc[0]
 
     st.markdown(f"""
@@ -308,29 +305,23 @@ elif modalità == "🔍 Corsa Singola":
 
 elif modalità == "🌐 Intera Linea":
     st.markdown(f"#### 🌐 Panoramica Linea: **{linea_scelta}** (Operatore: {operatore_scelto})")
-    st.markdown(f"<p style='color: gray; font-size: 13px;'>Trovate <b>{len(df_linea)} corse</b> totali. <b>Clicca su una riga della tabella</b> per visualizzare i dettagli della singola corsa.</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: gray; font-size: 13px;'>Trovate <b>{len(df_linea)} corse</b> totali. Usa il selettore sottostante per visualizzare i dettagli di una corsa.</p>", unsafe_allow_html=True)
 
     col_left, col_right = st.columns([1.2, 1.2])
 
     with col_left:
-        st.markdown("##### 📋 Elenco corse della linea (Clicca una riga)")
+        st.markdown("##### 📋 Elenco corse della linea")
         df_tabella_corse = df_linea[['departure_time', 'fermata_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
         df_tabella_corse.columns = ['Partenza', 'Da', 'Arrivo', 'A', 'Giorni Validità']
         
-        event = st.dataframe(
-            df_tabella_corse, 
-            selection_mode="single-row", 
-            on_selection="rerun", 
-            use_container_width=True, 
-            hide_index=True, 
-            height=480
-        )
+        st.dataframe(df_tabella_corse, use_container_width=True, hide_index=True, height=340)
         
-        # Gestione selezione riga
-        selected_rows = event.selection.get("rows", [])
-        if selected_rows:
-            idx = selected_rows[0]
-            st.session_state.selected_trip_id = df_linea.iloc[idx]['trip_id']
+        df_linea['descrizione_scelta'] = df_linea['departure_time'] + " - Da: " + df_linea['fermata_partenza'] + " a " + df_linea['fermata_arrivo']
+        corsa_selezionata_tendina = st.selectbox("Seleziona corsa da approfondire:", df_linea['descrizione_scelta'].tolist())
+        
+        if st.button("🔍 Mostra dettagli corsa"):
+            trip_id_scelto = df_linea[df_linea['descrizione_scelta'] == corsa_selezionata_tendina]['trip_id'].values[0]
+            st.session_state.selected_trip_id = trip_id_scelto
             st.rerun()
 
     with col_right:
@@ -366,29 +357,23 @@ elif modalità == "🌐 Intera Linea":
 
 else:
     st.markdown(f"#### 🏢 Panoramica Operatore: **{operatore_scelto}**")
-    st.markdown(f"<p style='color: gray; font-size: 13px;'>Trovate <b>{len(df_op)} corse totali</b>. <b>Clicca su una riga della tabella</b> per visualizzare i dettagli della singola corsa.</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: gray; font-size: 13px;'>Trovate <b>{len(df_op)} corse totali</b>. Usa il selettore sottostante per visualizzare i dettagli di una corsa.</p>", unsafe_allow_html=True)
 
     col_left, col_right = st.columns([1.2, 1.2])
 
     with col_left:
-        st.markdown("##### 📋 Elenco di tutte le corse dell'operatore (Clicca una riga)")
+        st.markdown("##### 📋 Elenco di tutte le corse dell'operatore")
         df_tabella_op = df_op[['linea', 'departure_time', 'fermata_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
         df_tabella_op.columns = ['Linea', 'Partenza', 'Da', 'Arrivo', 'A', 'Giorni Validità']
         
-        event = st.dataframe(
-            df_tabella_op, 
-            selection_mode="single-row", 
-            on_selection="rerun", 
-            use_container_width=True, 
-            hide_index=True, 
-            height=480
-        )
+        st.dataframe(df_tabella_op, use_container_width=True, hide_index=True, height=340)
         
-        # Gestione selezione riga
-        selected_rows = event.selection.get("rows", [])
-        if selected_rows:
-            idx = selected_rows[0]
-            st.session_state.selected_trip_id = df_op.iloc[idx]['trip_id']
+        df_op['descrizione_scelta_op'] = "Linea " + df_op['linea'].astype(str) + " (" + df_op['departure_time'] + " - " + df_op['fermata_partenza'] + ")"
+        corsa_op_tendina = st.selectbox("Seleziona corsa dell'operatore:", df_op['descrizione_scelta_op'].tolist())
+        
+        if st.button("🔍 Mostra dettagli corsa operatore"):
+            trip_id_op_scelto = df_op[df_op['descrizione_scelta_op'] == corsa_op_tendina]['trip_id'].values[0]
+            st.session_state.selected_trip_id = trip_id_op_scelto
             st.rerun()
 
     with col_right:
