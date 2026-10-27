@@ -6,13 +6,31 @@ from datetime import datetime, timedelta
 import folium
 
 # ==========================================
-# CONFIGURAZIONE DELLA PAGINA
+# CONFIGURAZIONE DELLA PAGINA E STILE CSS
 # ==========================================
 st.set_page_config(
     page_title="Dashboard Trasporti GTFS",
     page_icon="🚌",
     layout="wide"
 )
+
+# Iniezione CSS personalizzato (Punto 4)
+st.markdown("""
+<style>
+    /* Box informativi moderni con bordo arrotondato e accento colorato */
+    .info-box {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-left: 5px solid #2563eb;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        color: #1e293b;
+        font-size: 14px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.markdown("### 🚌 Dashboard Tratta e Orari GTFS")
 st.markdown("<p style='color: gray; font-size: 13px;'>Analizza le singole corse, filtra per Comune o esplora l'intera offerta.</p>", unsafe_allow_html=True)
@@ -249,12 +267,13 @@ if is_corsa_cliccata:
     corsa_info = trip_full[trip_full['trip_id'] == trip_id_corrente].iloc[0]
     linea_corrente = corsa_info['linea']
 
+    # Utilizzo del box CSS personalizzato (.info-box)
     st.markdown(f"""
-    <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #333;'>
-        <b>Linea:</b> {linea_corrente} &nbsp;&nbsp;|&nbsp;&nbsp;
-        <b>Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-        <b>Arrivo:</b> {corsa_info['fermata_arrivo']} ({corsa_info['comune_arrivo']}) alle {corsa_info['arrival_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-        <b>Giorni validità:</b> {corsa_info['giorni_validita']} giorni
+    <div class="info-box">
+        <b>🚍 Linea:</b> {linea_corrente} &nbsp;&nbsp;|&nbsp;&nbsp;
+        <b>🕒 Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
+        <b>🏁 Arrivo:</b> {corsa_info['fermata_arrivo']} ({corsa_info['comune_arrivo']}) alle {corsa_info['arrival_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
+        <b>📅 Giorni validità:</b> {corsa_info['giorni_validita']} giorni
     </div>
     """, unsafe_allow_html=True)
 
@@ -268,7 +287,7 @@ if is_corsa_cliccata:
             st.markdown("##### 📋 Fermate e Orari di Passaggio")
             df_tabella_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
             df_tabella_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-            st.dataframe(df_tabella_fermate, use_container_width=True, hide_index=True, height=480)
+            st.dataframe(df_tabella_fermate, use_container_width=True, hide_index=True, height=620)
             
         with col_right:
             st.markdown(f"##### 🗺️ Mappa Percorso (Linea {linea_corrente})")
@@ -289,7 +308,7 @@ if is_corsa_cliccata:
                 ).add_to(m)
                 
             map_html = m._repr_html_()
-            st.components.v1.html(map_html, height=480)
+            st.components.v1.html(map_html, height=620)
     else:
         st.warning("Nessuna coordinata trovata per questa corsa.")
 
@@ -297,7 +316,6 @@ elif tipo_vista == "🏙️ Analisi per Comune":
     st.markdown(f"### 🏙️ Analisi per il Comune: **{comune_scelto}**")
     st.markdown("Filtra le corse per tipologia e clicca su **🔍 Percorso** per aprire la mappa dettagliata.")
 
-    # Filtro orizzontale in alto
     filtro_tipo = st.radio(
         "Seleziona tipologia corse:",
         ["🚀 In partenza", "🏁 In arrivo", "🚏 In transito (intermedie)"],
@@ -342,11 +360,12 @@ else:
     if modalità_classica == "🔍 Corsa Singola":
         if trip_id_selezionato is not None:
             corsa_info = df_linea[df_linea['trip_id'] == trip_id_selezionato].iloc[0]
+            
             st.markdown(f"""
-            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; color: #333;'>
-                <b>Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-                <b>Arrivo:</b> {corsa_info['fermata_arrivo']} ({corsa_info['comune_arrivo']}) alle {corsa_info['arrival_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
-                <b>Giorni validità:</b> {corsa_info['giorni_validita']} giorni
+            <div class="info-box">
+                <b>🕒 Partenza:</b> {corsa_info['fermata_partenza']} ({corsa_info['comune_partenza']}) alle {corsa_info['departure_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
+                <b>🏁 Arrivo:</b> {corsa_info['fermata_arrivo']} ({corsa_info['comune_arrivo']}) alle {corsa_info['arrival_time']} &nbsp;&nbsp;|&nbsp;&nbsp;
+                <b>📅 Giorni validità:</b> {corsa_info['giorni_validita']} giorni
             </div>
             """, unsafe_allow_html=True)
 
@@ -359,7 +378,7 @@ else:
                     st.markdown("##### 📋 Fermate e Orari di Passaggio")
                     df_tab_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
                     df_tab_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=480)
+                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=620)
                 with col_right:
                     st.markdown(f"##### 🗺️ Mappa Percorso (Linea {linea_scelta})")
                     centro_lat, centro_lon = path_stops['stop_lat'].mean(), path_stops['stop_lon'].mean()
@@ -372,7 +391,7 @@ else:
                             popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
                             icon=folium.Icon(color='red', icon='bus', prefix='fa')
                         ).add_to(m)
-                    st.components.v1.html(m._repr_html_(), height=480)
+                    st.components.v1.html(m._repr_html_(), height=620)
         else:
             st.info("Seleziona una linea e una corsa dalla barra laterale.")
 
@@ -384,7 +403,7 @@ else:
                 st.markdown("##### 📋 Elenco corse")
                 df_tab_corse = df_linea[['departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
                 df_tab_corse.columns = ['Partenza', 'Da', 'Comune Origine', 'Arrivo', 'A', 'Giorni Validità']
-                st.dataframe(df_tab_corse, use_container_width=True, hide_index=True, height=340)
+                st.dataframe(df_tab_corse, use_container_width=True, hide_index=True, height=450)
                 
                 df_linea['descrizione_scelta'] = df_linea['departure_time'] + " - " + df_linea['fermata_partenza'] + " ➔ " + df_linea['fermata_arrivo']
                 corsa_sel = st.selectbox("Seleziona corsa da approfondire:", df_linea['descrizione_scelta'].tolist())
@@ -404,7 +423,7 @@ else:
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
-                    st.components.v1.html(m_lin._repr_html_(), height=480)
+                    st.components.v1.html(m_lin._repr_html_(), height=620)
         else:
             st.info("Seleziona una linea valida.")
 
@@ -414,9 +433,10 @@ else:
             col_left, col_right = st.columns([1.2, 1.2])
             with col_left:
                 st.markdown("##### 📋 Elenco corse operatore")
-                df_tab_op = df_op[['linea', 'departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo']].copy()
-                df_tab_op.columns = ['Linea', 'Partenza', 'Da', 'Comune', 'Arrivo', 'A']
-                st.dataframe(df_tab_op, use_container_width=True, hide_index=True, height=340)
+                # Aggiunta dei giorni di validità anche nella tabella dell'operatore
+                df_tab_op = df_op[['linea', 'departure_time', 'fermata_partenza', 'comune_partenza', 'arrival_time', 'fermata_arrivo', 'giorni_validita']].copy()
+                df_tab_op.columns = ['Linea', 'Partenza', 'Da', 'Comune', 'Arrivo', 'A', 'Giorni Validità']
+                st.dataframe(df_tab_op, use_container_width=True, hide_index=True, height=450)
             with col_right:
                 st.markdown("##### 🗺️ Mappa Globale Operatore")
                 trip_ids_op = df_op['trip_id'].tolist()
@@ -429,4 +449,4 @@ else:
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="green", weight=2, opacity=0.4).add_to(m_op)
-                    st.components.v1.html(m_op._repr_html_(), height=480)
+                    st.components.v1.html(m_op._repr_html_(), height=620)
