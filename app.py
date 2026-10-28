@@ -602,7 +602,7 @@ elif tipo_vista == "🧭 Navigazione Classica":
             col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
             with col_t:
                 st.markdown(
-                    f"##### 🌐 Panoramica Linea: **{linea_scelta}** <span style='font-size:12px; color:gray;'>(Operatore: {operatore_scelto})</span>", 
+                    f"<div style='font-size: 16px; font-weight: bold; line-height: 1.4; padding-top: 5px;'>🌐 Panoramica Linea: {linea_scelta} <span style='font-size:12px; color:gray; font-weight: normal;'>(Operatore: {operatore_scelto})</span></div>", 
                     unsafe_allow_html=True
                 )
             with col_k1:
@@ -654,7 +654,10 @@ elif tipo_vista == "🧭 Navigazione Classica":
 
             col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
             with col_t:
-                st.markdown(f"##### 🏢 Panoramica Operatore: **{operatore_scelto}**", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='font-size: 16px; font-weight: bold; line-height: 1.4; padding-top: 5px;'>🏢 Panoramica Operatore: {operatore_scelto}</div>", 
+                    unsafe_allow_html=True
+                )
             with col_k1:
                 st.metric("🚌 Corse Distinte", f"{num_corse_op} orari")
             with col_k2:
