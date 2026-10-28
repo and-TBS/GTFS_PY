@@ -600,3 +600,100 @@ elif tipo_vista == "🧭 Navigazione Classica":
             vol_corse_linea = int(df_linea['giorni_validita'].sum())
 
             col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
+            with col_t:
+                st.markdown(
+                    f"##### 🌐 Panoramica Linea: **{linea_scelta}** <span style='font-size:12px; color:gray;'>(Operatore: {operatore_scelto})</span>", 
+                    unsafe_allow_html=True
+                )
+            with col_k1:
+                st.metric("🚌 Corse Distinte", f"{num_corse_linea} orari")
+            with col_k2:
+                st.metric("📊 Volume Totale", f"{vol_corse_linea:,} corse")
+            
+            st.markdown("---")
+
+            col_left, col_right = st.columns([1.4, 1.1])
+            with col_left:
+                st.markdown("##### 📋 Elenco corse della linea")
+                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
+                
+                with st.container(height=720):
+                    if not df_linea.empty:
+                        for _, row in df_linea.iterrows():
+                            c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
+                            if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
+                                st.session_state.selected_trip_id = row['trip_id']
+                                st.rerun()
+                            c2.markdown(f"<span class='table-text'>🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
+                            c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                            c4.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
+                            c5.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                            c6.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    else:
+                        st.info("Nessuna corsa disponibile per questa linea.")
+            with col_right:
+                st.markdown("##### 🗺️ Mappa Cumulativa Linea")
+                trip_ids = df_linea['trip_id'].tolist()
+                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
+                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
+                if not path_all.empty:
+                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
+                    for t_id in trip_ids[:15]:
+                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
+                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
+                        if len(p_t) > 1:
+                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
+                    st.components.v1.html(m_lin._repr_html_(), height=720)
+        else:
+            st.info("Seleziona una linea valida dalla barra laterale.")
+
+    else:
+        if operatore_scelto:
+            num_corse_op = len(df_op)
+            vol_corse_op = int(df_op['giorni_validita'].sum())
+
+            col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
+            with col_t:
+                st.markdown(f"##### 🏢 Panoramica Operatore: **{operatore_scelto}**", unsafe_allow_html=True)
+            with col_k1:
+                st.metric("🚌 Corse Distinte", f"{num_corse_op} orari")
+            with col_k2:
+                st.metric("📊 Volume Totale", f"{vol_corse_op:,} corse")
+            
+            st.markdown("---")
+
+            col_left, col_right = st.columns([1.4, 1.1])
+            with col_left:
+                st.markdown("##### 📋 Elenco corse operatore")
+                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
+                
+                with st.container(height=720):
+                    if not df_op.empty:
+                        for _, row in df_op.iterrows():
+                            c1, c2, c3, c4, c5, c6, c7 = st.columns([0.8, 1.4, 1.8, 2.4, 1.8, 2.4, 1])
+                            if c1.button("🔍", key=f"op_btn_{row['trip_id']}"):
+                                st.session_state.selected_trip_id = row['trip_id']
+                                st.rerun()
+                            c2.markdown(f"<span class='table-text'><b>{row['linea']}</b></span>", unsafe_allow_html=True)
+                            c3.markdown(f"<span class='table-text'>🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
+                            c4.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                            c5.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
+                            c6.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                            c7.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    else:
+                        st.info("Nessuna corsa disponibile per questo operatore.")
+            with col_right:
+                st.markdown("##### 🗺️ Mappa Globale Operatore")
+                trip_ids_op = df_op['trip_id'].tolist()
+                st_op_all = stop_times[stop_times['trip_id'].isin(trip_ids_op)]
+                path_op = pd.merge(st_op_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
+                if not path_op.empty:
+                    m_op = folium.Map(location=[path_op['stop_lat'].mean(), path_op['stop_lon'].mean()], zoom_start=10, tiles="Esri.WorldStreetMap")
+                    for t_id in trip_ids_op[:20]:
+                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
+                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
+                        if len(p_t) > 1:
+                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="green", weight=4, opacity=0.7).add_to(m_op)
+                    st.components.v1.html(m_op._repr_html_(), height=720)
+        else:
+            st.info("Seleziona un operatore valido dalla barra laterale.")
