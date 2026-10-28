@@ -31,6 +31,24 @@ st.markdown("""
         color: #1e293b;
         font-size: 14px;
     }
+    .hero-banner {
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        padding: 40px;
+        border-radius: 12px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .hero-banner h1 {
+        color: white !important;
+        margin-bottom: 10px;
+        font-size: 28px;
+    }
+    .hero-banner p {
+        color: #e2e8f0 !important;
+        font-size: 15px;
+        margin-bottom: 0px;
+    }
     .stButton > button {
         width: 100% !important;
         padding: 2px 0px !important;
@@ -52,12 +70,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-st.markdown("### 🚌 Dashboard Tratta e Orari GTFS")
-st.markdown(
-    "<p style='color: gray; font-size: 13px; margin-bottom: 10px;'>Analizza le singole corse, filtra per Comune o esplora l'intera offerta.</p>", 
-    unsafe_allow_html=True
-)
 
 GTFS_DIR = "."
 GEOJSON_FILE = "Piemonte.geojson"
@@ -278,7 +290,6 @@ elif isinstance(intervallo_date, date):
 else:
     trip_filtrato_temp = trip_full_filtrato
 
-# Se il filtro date azzera i dati, fallback di sicurezza per non lasciare la pagina bianca
 if trip_filtrato_temp.empty:
     st.sidebar.warning("⚠️ Nessuna corsa trovata nel periodo selezionato. Mostro tutti i dati.")
     trip_full = trip_full_filtrato
@@ -303,7 +314,7 @@ st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
 
 tipo_vista = st.sidebar.radio(
     "Seleziona modalità:",
-    ["🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+    ["🏠 Home / Benvenuto", "🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
 )
 
 trip_id_selezionato = None
@@ -336,7 +347,7 @@ if tipo_vista == "🧭 Navigazione Classica":
                 corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
                 trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
 
-else:
+elif tipo_vista == "🏙️ Analisi per Comune":
     comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
     comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
 
@@ -401,6 +412,32 @@ if is_corsa_cliccata:
             st.components.v1.html(m._repr_html_(), height=720)
     else:
         st.warning("Nessuna coordinata trovata per questa corsa.")
+
+elif tipo_vista == "🏠 Home / Benvenuto":
+    st.markdown("""
+    <div class="hero-banner">
+        <h1>🚌 Dashboard Tratta e Orari GTFS</h1>
+        <p>Benvenuto nel sistema di analisi e visualizzazione dei trasporti pubblici. Usa i filtri nella barra laterale a sinistra per impostare date, fasce orarie e selezionare la modalità di esplorazione.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("📍 Fermate Totali", f"{len(stops):,}")
+    with c2:
+        st.metric("🌐 Linee Gestite", f"{len(routes):,}")
+    with c3:
+        st.metric("🚌 Corse Totali", f"{len(trips):,}")
+    with c4:
+        st.metric("🏢 Operatori", f"{len(routes[route_operator_col].unique()) if route_operator_col in routes.columns else 1}")
+
+    st.markdown("---")
+    st.markdown("### 💡 Come iniziare")
+    st.markdown("""
+    1. **Filtri Globali (Barra a sinistra):** Seleziona il periodo temporale di interesse o la fascia oraria.
+    2. **Tipo di Visualizzazione:** Scegli tra **Navigazione Classica** (per analizzare linee, operatori o corse singole) oppure **Analisi per Comune** (per vedere arrivi, partenze e transiti di una specifica località).
+    3. **Interattività:** Clicca sulle icone di ricerca **🔍** nelle tabelle per aprire il dettaglio completo e la mappa interattiva di ogni singola corsa.
+    """)
 
 elif tipo_vista == "🏙️ Analisi per Comune":
     if comune_scelto:
