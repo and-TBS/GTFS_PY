@@ -554,51 +554,54 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with tab_partenze:
             st.markdown("#### Corse in **partenza** da " + str(comune_scelto))
             if not corse_partenza.empty:
-                for _, row in corse_partenza.iterrows():
+                for idx, row in enumerate(corse_partenza.iterrows()):
+                    row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"part_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
+                    if c1.button("🔍", key=f"part_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row['linea'])
-                    dep_str = str(row['departure_time'])
+                    linea_str = str(row_data['linea'])
+                    dep_str = str(row_data['departure_time'])
                     c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
             else:
                 st.info("Nessuna corsa in partenza per i filtri selezionati.")
 
         with tab_arrivi:
             st.markdown("#### Corse in **arrivo** a " + str(comune_scelto))
             if not corse_arrivo.empty:
-                for _, row in corse_arrivo.iterrows():
+                for idx, row in enumerate(corse_arrivo.iterrows()):
+                    row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"arr_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
+                    if c1.button("🔍", key=f"arr_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row['linea'])
-                    arr_str = str(row['arrival_time'])
+                    linea_str = str(row_data['linea'])
+                    arr_str = str(row_data['arrival_time'])
                     c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {arr_str}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
             else:
                 st.info("Nessuna corsa in arrivo per i filtri selezionati.")
 
         with tab_transiti:
             st.markdown("#### Corse con **fermata intermedia** a " + str(comune_scelto))
             if not corse_transito.empty:
-                for _, row in corse_transito.iterrows():
+                for idx, row in enumerate(corse_transito.iterrows()):
+                    row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"trans_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
+                    if c1.button("🔍", key=f"trans_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row['linea'])
-                    dep_str = str(row['departure_time'])
+                    linea_str = str(row_data['linea'])
+                    dep_str = str(row_data['departure_time'])
                     c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
             else:
                 st.info("Nessuna corsa in transito per i filtri selezionati.")
     else:
@@ -666,16 +669,17 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 st.markdown("<div class='section-title'>📋 Elenco corse filtrate</div>", unsafe_allow_html=True)
                 st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
                 
-                for _, row in df_linea.iterrows():
+                for idx, row in enumerate(df_linea.iterrows()):
+                    row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
-                    if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
+                    if c1.button("🔍", key=f"linea_btn_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c6.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🏁 {row_data['arrival_time']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
             with col_right:
                 st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
                 trip_ids = df_linea['trip_id'].tolist()
