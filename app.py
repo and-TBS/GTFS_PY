@@ -276,7 +276,6 @@ else:
     routes['agency_name'] = 'Operatore Unico'
     route_operator_col = 'agency_name'
 
-# Dataset completo di riserva (strutturato in modo sicuro)
 cols_to_merge = ['route_id', 'linea', route_operator_col]
 trip_full_base = pd.merge(trip_endpoints, trips, on='trip_id', how='left')
 trip_full_base = pd.merge(trip_full_base, routes[cols_to_merge], on='route_id', how='left')
@@ -377,21 +376,18 @@ if tipo_vista == "🧭 Navigazione Classica":
         ["🔍 Corsa Singola", "🌐 Intera Linea"]
     )
     
-    # --- FILTRI A CASCATA BIDIREZIONALE (OPERATORE <-> LINEA) ---
+    # --- FILTRI A CASCATA BIDIREZIONALE OTTIMIZZATI E VELOCI ---
     tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
     tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
     
-    linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", tutte_linee, default=[])
+    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", tutti_operatori, default=[])
     
-    if linee_scelte:
-        operatori_disponibili = sorted(trip_full[trip_full['linea'].isin(linee_scelte)][route_operator_col].dropna().unique().tolist())
-    else:
-        operatori_disponibili = tutti_operatori
-        
-    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", operatori_disponibili, default=[])
-    
-    if operatori_scelti and not linee_scelte:
+    if operatori_scelti:
         linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
+    else:
+        linee_disponibili = tutte_linee
+        
+    linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", linee_disponibili, default=[])
 
     df_linea = trip_full.copy()
     if operatori_scelti:
@@ -554,54 +550,54 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with tab_partenze:
             st.markdown("#### Corse in **partenza** da " + str(comune_scelto))
             if not corse_partenza.empty:
-                for idx, row in enumerate(corse_partenza.iterrows()):
+                for idx, row in enumerate(corse_partenza.head(100).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
                     if c1.button("🔍", key=f"part_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row_data['linea'])
-                    dep_str = str(row_data['departure_time'])
-                    c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
                     c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
                     c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_partenza) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
                 st.info("Nessuna corsa in partenza per i filtri selezionati.")
 
         with tab_arrivi:
             st.markdown("#### Corse in **arrivo** a " + str(comune_scelto))
             if not corse_arrivo.empty:
-                for idx, row in enumerate(corse_arrivo.iterrows()):
+                for idx, row in enumerate(corse_arrivo.head(100).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
                     if c1.button("🔍", key=f"arr_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row_data['linea'])
-                    arr_str = str(row_data['arrival_time'])
-                    c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {arr_str}</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['arrival_time']}</span>", unsafe_allow_html=True)
                     c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
                     c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_arrivo) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
                 st.info("Nessuna corsa in arrivo per i filtri selezionati.")
 
         with tab_transiti:
             st.markdown("#### Corse con **fermata intermedia** a " + str(comune_scelto))
             if not corse_transito.empty:
-                for idx, row in enumerate(corse_transito.iterrows()):
+                for idx, row in enumerate(corse_transito.head(100).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
                     if c1.button("🔍", key=f"trans_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    linea_str = str(row_data['linea'])
-                    dep_str = str(row_data['departure_time'])
-                    c2.markdown(f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
                     c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
                     c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_transito) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
                 st.info("Nessuna corsa in transito per i filtri selezionati.")
     else:
@@ -669,7 +665,7 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 st.markdown("<div class='section-title'>📋 Elenco corse filtrate</div>", unsafe_allow_html=True)
                 st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
                 
-                for idx, row in enumerate(df_linea.iterrows()):
+                for idx, row in enumerate(df_linea.head(100).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
                     if c1.button("🔍", key=f"linea_btn_{row_data['trip_id']}_{idx}"):
@@ -680,6 +676,10 @@ elif tipo_vista == "🧭 Navigazione Classica":
                     c4.markdown(f"<span class='table-text'>🏁 {row_data['arrival_time']}</span>", unsafe_allow_html=True)
                     c5.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                
+                if len(df_linea) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni. Usa i filtri per restringere la ricerca.")
+
             with col_right:
                 st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
                 trip_ids = df_linea['trip_id'].tolist()
