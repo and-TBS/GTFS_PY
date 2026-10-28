@@ -76,11 +76,6 @@ st.markdown("""
     [data-testid="stMetricLabel"] {
         font-size: 12px !important;
     }
-div[data-testid="column"]:nth-of-type(2) {
-        position: sticky;
-        top: 4rem;
-        align-self: flex-start;
-    }
 </style>
 """, unsafe_allow_html=True)
 
