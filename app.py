@@ -728,16 +728,22 @@ elif tipo_vista == "🧭 Navigazione Classica":
 
             with col_right:
                 st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
-                trip_ids = df_linea['trip_id'].tolist()
-                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
+                
+                # CORRETTO: Prende una corsa rappresentativa per ogni linea distinta (fino a un massimo di 20 linee)
+                sample_trip_ids = df_linea.drop_duplicates(subset=['route_id'])['trip_id'].tolist()[:20]
+                
+                st_all = stop_times[stop_times['trip_id'].isin(sample_trip_ids)]
                 path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
+                
                 if not path_all.empty:
                     m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
-                    for t_id in trip_ids[:15]:
+                    
+                    for t_id in sample_trip_ids:
                         st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
                         p_t = pd.merge(st_t, stops_unique, on='stop_id')
                         if len(p_t) > 1:
                             folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
+                            
                     st.components.v1.html(m_lin._repr_html_(), height=720)
         else:
             st.info("Nessuna corsa disponibile per i filtri selezionati.")
