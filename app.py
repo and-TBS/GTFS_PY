@@ -244,17 +244,171 @@ try:
 
     first_stops = stop_times.groupby('trip_id').first().reset_index()[['trip_id', 'stop_id', 'departure_time']]
     first_stops.rename(columns={'stop_id': 'start_stop_id'}, inplace=True)
+    
     last_stops = stop_times.groupby('trip_id').last().reset_index()[['trip_id', 'stop_id', 'arrival_time']]
     last_stops.rename(columns={'stop_id': 'end_stop_id'}, inplace=True)
 
     trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
     stops_unique = stops.drop_duplicates(subset=['stop_id'])
 
-    trip_endpoints = pd.merge(
-        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
-        left_on='start_stop_id', right_on='stop_id', how='left'
-    ).rename(columns={'stop_name': 'fermata_partenza', 'comune': 'comune_partenza'}).drop(columns=['stop_id', 'start_stop_id'])
+    # Passaggi puliti e separati per evitare errori di sintassi sulle parentesi
+    m1 = pd.merge(trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], left_on='start_stop_id', right_on='stop_id', how='left')
+    m1 = m1.rename(columns={'stop_name': 'fermata_partenza', 'comune': 'comune_partenza'})
+    trip_endpoints = m1.drop(columns=['stop_id', 'start_stop_id'])
 
-    trip_endpoints = pd.merge(
-        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
-        left_on='end_stop_id', right_on
+    m2 = pd.merge(trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], left_on='end_stop_id', right_on='stop_id', how='left')
+    m2 = m2.rename(columns={'stop_name': 'fermata_arrivo', 'comune': 'comune_arrivo'})
+    trip_endpoints = m2.drop(columns=['stop_id', 'end_stop_id'])
+
+except Exception as e:
+    st.error(f"❌ **Errore nell'elaborazione degli orari (stop_times):** {e}")
+    st.stop()
+
+# Gestione Operatore
+if agency is not None and 'agency_id' in routes.columns and 'agency_id' in agency.columns:
+    routes = pd.merge(routes, agency[['agency_id', 'agency_name']], on='agency_id', how='left')
+    route_operator_col = 'agency_name'
+elif agency is not None and len(agency) > 0:
+    routes['agency_name'] = agency['agency_name'].iloc[0]
+    route_operator_col = 'agency_name'
+else:
+    routes['agency_name'] = 'Operatore Unico'
+    route_operator_col = 'agency_name'
+
+trip_full_base = pd.merge(trip_endpoints, trips, on='trip_id', how='left')
+trip_full_base = pd.merge(trip_full_base, routes[['route_id', 'linea', route_operator_col]], on='route_id', how='left')
+trip_full_base = trip_full_base.drop_duplicates(subset=['trip_id'])
+
+# ==========================================
+# BARRA LATERALE: FILTRI GLOBALI E MENU
+# ==========================================
+st.sidebar.markdown("### 🎛️ Filtri Globali")
+
+usa_intero_periodo = st.sidebar.checkbox("📅 Seleziona intero periodo disponibile", value=True)
+
+if usa_intero_periodo:
+    intervallo_date = (min_global_date, max_global_date)
+    st.sidebar.caption(f"Periodo attivo: {min_global_date.strftime('%d/%m/%Y')} ➔ {max_global_date.strftime('%d/%m/%Y')}")
+else:
+    intervallo_date = st.sidebar.date_input(
+        "Intervallo Date:",
+        value=(min_global_date, max_global_date),
+        min_value=min_global_date,
+        max_value=max_global_date
+    )
+
+fascia_oraria = st.sidebar.slider(
+    "Fascia Oraria Partenza:",
+    min_value=0,
+    max_value=24,
+    value=(0, 24)
+)
+
+def calc_valid_days_range(s_id, start_d, end_d):
+    dates = service_active_dates.get(s_id, set())
+    return sum(1 for d in dates if start_d <= d <= end_d)
+
+def calc_valid_days_single(s_id, single_d):
+    return 1 if single_d in service_active_dates.get(s_id, set()) else 0
+
+trip_full = trip_full_base.copy()
+
+if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    start_f, end_f = intervallo_date
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_range(x, start_f, end_f))
+    trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
+elif isinstance(intervallo_date, date):
+    single_f = intervallo_date
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_single(x, single_f))
+    trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
+else:
+    trip_filtrato_temp = trip_full
+
+if trip_filtrato_temp.empty:
+    st.sidebar.warning("⚠️ Nessuna corsa trovata nel periodo selezionato. Mostro tutti i dati.")
+    trip_full = trip_full_base
+else:
+    trip_full = trip_filtrato_temp
+
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
+        except:
+            return False
+    trip_full = trip_full[trip_full['departure_time'].apply(match_fascia)]
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
+
+if "selected_trip_id" not in st.session_state:
+    st.session_state.selected_trip_id = None
+
+if "last_tipo_vista" not in st.session_state:
+    st.session_state.last_tipo_vista = None
+
+tipo_vista = st.sidebar.radio(
+    "Seleziona modalità:",
+    ["🏠 Home / Benvenuto", "🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+)
+
+if st.session_state.last_tipo_vista != tipo_vista:
+    st.session_state.selected_trip_id = None
+    st.session_state.last_tipo_vista = tipo_vista
+
+trip_id_selezionato = None
+df_linea = pd.DataFrame()
+df_op = pd.DataFrame()
+linee_scelte = []
+operatori_scelti = []
+modalità_classica = None
+comune_scelto = None
+
+if tipo_vista == "🧭 Navigazione Classica":
+    modalità_classica = st.sidebar.radio(
+        "Modalità Classica:", 
+        ["🔍 Corsa Singola", "🌐 Intera Linea", "🏢 Intero Operatore"]
+    )
+    
+    operatori_disponibili = sorted(trip_full[route_operator_col].dropna().unique().tolist())
+    operatori_scelti = st.sidebar.multiselect("Operatore/i:", operatori_disponibili, default=[])
+    
+    if not operatori_scelti:
+        df_op = trip_full.copy()
+    else:
+        df_op = trip_full[trip_full[route_operator_col].isin(operatori_scelti)]
+    
+    if modalità_classica != "🏢 Intero Operatore" and not df_op.empty:
+        linee_disponibili = sorted(df_op['linea'].dropna().unique().tolist())
+        linee_scelte = st.sidebar.multiselect("Linea/e:", linee_disponibili, default=[])
+        
+        if not linee_scelte:
+            df_linea = df_op.sort_values('departure_time')
+        else:
+            df_linea = df_op[df_op['linea'].isin(linee_scelte)].sort_values('departure_time')
+        
+        if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
+            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + "]"
+            corse_disponibili = df_linea['descrizione_corsa'].tolist()
+            if corse_disponibili:
+                corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
+                trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
+
+elif tipo_vista == "🏙️ Analisi per Comune":
+    comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
+    comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
+
+# ==========================================
+# PANNELLO PRINCIPALE
+# ==========================================
+if st.session_state.selected_trip_id is not None:
+    if st.button("⬅️ Torna alla schermata precedente"):
+        st.session_state.selected_trip_id = None
+        st.rerun()
+
+    trip_id_corrente = st.session_state.selected_trip_
