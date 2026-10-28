@@ -276,7 +276,7 @@ else:
     routes['agency_name'] = 'Operatore Unico'
     route_operator_col = 'agency_name'
 
-# Dataset completo di riserva
+# Dataset completo di riserva (strutturato in modo sicuro)
 cols_to_merge = ['route_id', 'linea', route_operator_col]
 trip_full_base = pd.merge(trip_endpoints, trips, on='trip_id', how='left')
 trip_full_base = pd.merge(trip_full_base, routes[cols_to_merge], on='route_id', how='left')
@@ -667,4 +667,27 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
                 
                 for _, row in df_linea.iterrows():
-                    c1, c2, c3, c4, c5, c6 = st.columns(
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
+                    if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
+                        st.session_state.selected_trip_id = row['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
+            with col_right:
+                st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
+                trip_ids = df_linea['trip_id'].tolist()
+                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
+                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
+                if not path_all.empty:
+                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
+                    for t_id in trip_ids[:15]:
+                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
+                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
+                        if len(p_t) > 1:
+                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
+                    st.components.v1.html(m_lin._repr_html_(), height=720)
+        else:
+            st.info("Nessuna corsa disponibile per i filtri selezionati.")
