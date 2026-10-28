@@ -569,8 +569,8 @@ elif tipo_vista == "🏙️ Analisi per Comune":
                     c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} ➔ {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
                     c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
-                if len(corse_partenza) > 100:
-                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
+                if len(corse_partenza) > 1000:
+                    st.caption("⚠️ Mostrate le prime 1000 corse per ottimizzare le prestazioni.")
             else:
                 st.info("Nessuna corsa in partenza per i filtri selezionati.")
 
