@@ -561,4 +561,166 @@ elif tipo_vista == "🏙️ Analisi per Comune":
                 for idx, row in enumerate(corse_partenza.head(100).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
-                    if c1.button("🔍", key=f
+                    if c1.button("🔍", key=f"part_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} ➔ {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_partenza) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
+            else:
+                st.info("Nessuna corsa in partenza per i filtri selezionati.")
+
+        with tab_arrivi:
+            st.markdown("#### Corse in **arrivo** a " + str(comune_scelto))
+            if not corse_arrivo.empty:
+                for idx, row in enumerate(corse_arrivo.head(100).iterrows()):
+                    row_data = row[1]
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
+                    if c1.button("🔍", key=f"arr_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['arrival_time']} ➔ {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_arrivo) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
+            else:
+                st.info("Nessuna corsa in arrivo per i filtri selezionati.")
+
+        with tab_transiti:
+            st.markdown("#### Corse con **fermata intermedia** a " + str(comune_scelto))
+            if not corse_transito.empty:
+                for idx, row in enumerate(corse_transito.head(100).iterrows()):
+                    row_data = row[1]
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
+                    if c1.button("🔍", key=f"trans_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} (Da: {row_data['fermata_partenza']})</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                if len(corse_transito) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
+            else:
+                st.info("Nessuna corsa in transito per i filtri selezionati.")
+    else:
+        st.info("Seleziona un comune dalla barra laterale.")
+
+elif tipo_vista == "🧭 Navigazione Classica":
+    if modalità_classica == "🔍 Corsa Singola":
+        if trip_id_selezionato is not None:
+            corsa_info = df_linea[df_linea['trip_id'] == trip_id_selezionato].iloc[0]
+            
+            info_box_text2 = (
+                "<b>🚍 Linea:</b> " + str(corsa_info['linea']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+                "<b>🏢 Operatore:</b> " + str(corsa_info[route_operator_col]) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+                "<b>🕒 Partenza:</b> " + str(corsa_info['fermata_partenza']) + " (" + str(corsa_info['comune_partenza']) + ") alle " + str(corsa_info['departure_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+                "<b>🏁 Arrivo:</b> " + str(corsa_info['fermata_arrivo']) + " (" + str(corsa_info['comune_arrivo']) + ") alle " + str(corsa_info['arrival_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+                "<b>📅 Giorni validità:</b> " + str(int(corsa_info['giorni_validita'])) + " giorni"
+            )
+            st.markdown(f'<div class="info-box">{info_box_text2}</div>', unsafe_allow_html=True)
+
+            st_trip = stop_times[stop_times['trip_id'] == trip_id_selezionato].sort_values('stop_sequence')
+            path_stops = pd.merge(st_trip, stops_unique, on='stop_id')
+
+            if not path_stops.empty:
+                col_left, col_right = st.columns([1.1, 1.3])
+                with col_left:
+                    st.markdown("<div class='section-title'>📋 Fermate e Orari di Passaggio</div>", unsafe_allow_html=True)
+                    df_tab_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
+                    df_tab_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
+                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=720)
+                with col_right:
+                    st.markdown(f"<div class='section-title'>🗺️ Mappa Percorso (Corsa Selezionata)</div>", unsafe_allow_html=True)
+                    centro_lat, centro_lon = path_stops['stop_lat'].mean(), path_stops['stop_lon'].mean()
+                    m = folium.Map(location=[centro_lat, centro_lon], zoom_start=12, tiles="Esri.WorldStreetMap")
+                    coords = path_stops[['stop_lat', 'stop_lon']].values.tolist()
+                    folium.PolyLine(coords, color="blue", weight=4, opacity=0.8).add_to(m)
+                    for _, row in path_stops.iterrows():
+                        folium.Marker(
+                            location=[row['stop_lat'], row['stop_lon']],
+                            popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
+                            icon=folium.Icon(color='red', icon='bus', prefix='fa')
+                        ).add_to(m)
+                    st.components.v1.html(m._repr_html_(), height=720)
+        else:
+            st.info("Seleziona almeno un operatore o una linea e una corsa valida dalla barra laterale.")
+
+    elif modalità_classica == "🌐 Intera Linea":
+        if not df_linea.empty:
+            num_corse_linea = len(df_linea)
+            vol_corse_linea = int(df_linea['giorni_validita'].sum())
+
+            col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
+            with col_t:
+                st.markdown(
+                    f"<div class='section-title'>🌐 Panoramica Selezioni <span style='font-size:12px; color:gray; font-weight: normal;'>(Linee distinte: {len(df_linea['linea'].unique())})</span></div>", 
+                    unsafe_allow_html=True
+                )
+            with col_k1:
+                st.metric("🚌 Corse Distinte", f"{num_corse_linea} orari")
+            with col_k2:
+                st.metric("📊 Volume Totale", f"{vol_corse_linea:,} corse")
+            
+            st.markdown("---")
+
+            # --- CONTROLLI DI ORDINAMENTO PER INTERA LINEA ---
+            col_ord1, col_ord2, _ = st.columns([2, 2, 4])
+            with col_ord1:
+                criterio_ord_linea = st.selectbox("Ordina per:", ["Orario", "Linea", "Operatore", "Giorni di validità"], key="ord_lin")
+            with col_ord2:
+                direzione_ord_linea = st.radio("Direzione:", ["Crescente (A-Z / 0-9)", "Discendente (Z-A / 9-0)"], horizontal=True, key="dir_lin")
+            
+            ascendente_linea = True if "Crescente" in direzione_ord_linea else False
+            map_col_linea = {
+                "Orario": "departure_time",
+                "Linea": "linea",
+                "Operatore": route_operator_col,
+                "Giorni di validità": "giorni_validita"
+            }
+            col_ordinamento_l = map_col_linea.get(criterio_ord_linea, "departure_time")
+            df_linea = df_linea.sort_values(by=col_ordinamento_l, ascending=ascendente_linea)
+
+            col_left, col_right = st.columns([1.4, 1.1])
+            with col_left:
+                st.markdown("<div class='section-title'>📋 Elenco corse filtrate</div>", unsafe_allow_html=True)
+                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
+                
+                for idx, row in enumerate(df_linea.head(100).iterrows()):
+                    row_data = row[1]
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
+                    if c1.button("🔍", key=f"linea_btn_{row_data['trip_id']}_{idx}"):
+                        st.session_state.selected_trip_id = row_data['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} ➔ {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                
+                if len(df_linea) > 100:
+                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni. Usa i filtri per restringere la ricerca.")
+
+            with col_right:
+                st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
+                trip_ids = df_linea['trip_id'].tolist()
+                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
+                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
+                if not path_all.empty:
+                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
+                    for t_id in trip_ids[:15]:
+                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
+                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
+                        if len(p_t) > 1:
+                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
+                    st.components.v1.html(m_lin._repr_html_(), height=720)
+        else:
+            st.info("Nessuna corsa disponibile per i filtri selezionati.")
