@@ -247,4 +247,23 @@ try:
     last_stops = stop_times.groupby('trip_id').last().reset_index()[['trip_id', 'stop_id', 'arrival_time']]
     last_stops.rename(columns={'stop_id': 'end_stop_id'}, inplace=True)
 
-    trip_endpoints = pd.merge(first_stops, last_stops,
+    trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
+    stops_unique = stops.drop_duplicates(subset=['stop_id'])
+
+    trip_endpoints = pd.merge(
+        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
+        left_on='start_stop_id', right_on='stop_id', how='left'
+    ).rename(columns={'stop_name': 'fermata_partenza', 'comune': 'comune_partenza'}).drop(columns=['stop_id', 'start_stop_id'])
+
+    trip_endpoints = pd.merge(
+        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
+        left_on='end_stop_id', right_on='stop_id', how='left'
+    ).rename(columns={'stop_name': 'fermata_arrivo', 'comune': 'comune_arrivo'}).drop(columns=['stop_id', 'end_stop_id'])
+except Exception as e:
+    st.error(f"❌ **Errore nell'elaborazione degli orari (stop_times):** {e}")
+    st.stop()
+
+# Gestione Operatore
+if agency is not None and 'agency_id' in routes.columns and 'agency_id' in agency.columns:
+    routes = pd.merge(routes, agency[['agency_id', 'agency_name']], on='agency_id', how='left')
+    route
