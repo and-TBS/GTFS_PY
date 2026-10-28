@@ -558,7 +558,7 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with tab_partenze:
             st.markdown("#### Corse in **partenza** da " + str(comune_scelto))
             if not corse_partenza.empty:
-                for idx, row in enumerate(corse_partenza.head(100).iterrows()):
+                for idx, row in enumerate(corse_partenza.head(1000).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"part_{row_data['trip_id']}_{idx}"):
@@ -577,7 +577,7 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with tab_arrivi:
             st.markdown("#### Corse in **arrivo** a " + str(comune_scelto))
             if not corse_arrivo.empty:
-                for idx, row in enumerate(corse_arrivo.head(100).iterrows()):
+                for idx, row in enumerate(corse_arrivo.head(1000).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"arr_{row_data['trip_id']}_{idx}"):
@@ -596,7 +596,7 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with tab_transiti:
             st.markdown("#### Corse con **fermata intermedia** a " + str(comune_scelto))
             if not corse_transito.empty:
-                for idx, row in enumerate(corse_transito.head(100).iterrows()):
+                for idx, row in enumerate(corse_transito.head(1000).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"trans_{row_data['trip_id']}_{idx}"):
@@ -704,7 +704,7 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 st.markdown("<div class='section-title'>📋 Elenco corse filtrate</div>", unsafe_allow_html=True)
                 st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
                 
-                for idx, row in enumerate(df_linea.head(100).iterrows()):
+                for idx, row in enumerate(df_linea.head(1000).iterrows()):
                     row_data = row[1]
                     c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"linea_btn_{row_data['trip_id']}_{idx}"):
