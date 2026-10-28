@@ -716,8 +716,8 @@ elif tipo_vista == "🧭 Navigazione Classica":
                     c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
                 
-                if len(df_linea) > 100:
-                    st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni. Usa i filtri per restringere la ricerca.")
+                if len(df_linea) > 1000:
+                    st.caption("⚠️ Mostrate le prime 1000 corse per ottimizzare le prestazioni. Usa i filtri per restringere la ricerca.")
 
             with col_right:
                 st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
