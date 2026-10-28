@@ -2,7 +2,7 @@ import os
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import folium
 
 # ==========================================
@@ -143,18 +143,20 @@ else:
     routes['agency_name'] = 'Operatore Unico'
     route_operator_col = 'agency_name'
 
-# --- CALCOLO GIORNI DI VALIDITÀ E SERVIZIO ---
+# --- CALCOLO GIORNI DI VALIDITÀ E DATE ---
 calendar_path = os.path.join(GTFS_DIR, 'calendar.txt')
 calendar_dates_path = os.path.join(GTFS_DIR, 'calendar_dates.txt')
-service_active_days = {}
-service_days_flags = {}
+service_active_dates = {}
+
+min_global_date = date.today()
+max_global_date = date.today() + timedelta(days=365)
 
 if os.path.exists(calendar_path):
     calendar = pd.read_csv(calendar_path).drop_duplicates(subset=['service_id'])
     days_cols = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    all_dates_found = []
     for _, row in calendar.iterrows():
         s_id = row['service_id']
-        service_days_flags[s_id] = {d: row.get(d, 0) == 1 for d in days_cols}
         try:
             start = datetime.strptime(str(int(row['start_date'])), '%Y%m%d')
             end = datetime.strptime(str(int(row['end_date'])), '%Y%m%d')
@@ -162,30 +164,36 @@ if os.path.exists(calendar_path):
             curr = start
             while curr <= end:
                 if row.get(days_cols[curr.weekday()]) == 1:
-                    active_dates.add(curr)
+                    active_dates.add(curr.date())
+                    all_dates_found.append(curr.date())
                 curr += timedelta(days=1)
-            service_active_days[s_id] = active_dates
+            service_active_dates[s_id] = active_dates
         except Exception:
-            service_active_days[s_id] = set()
+            service_active_dates[s_id] = set()
 
 if os.path.exists(calendar_dates_path):
     calendar_dates = pd.read_csv(calendar_dates_path)
     for _, row in calendar_dates.iterrows():
         s_id = row['service_id']
         try:
-            dt = datetime.strptime(str(int(row['date'])), '%Y%m%d')
+            dt = datetime.strptime(str(int(row['date'])), '%Y%m%d').date()
             exc_type = row['exception_type']
-            if s_id not in service_active_days:
-                service_active_days[s_id] = set()
+            if s_id not in service_active_dates:
+                service_active_dates[s_id] = set()
             if exc_type == 1:
-                service_active_days[s_id].add(dt)
+                service_active_dates[s_id].add(dt)
+                all_dates_found.append(dt)
             elif exc_type == 2:
-                service_active_days[s_id].discard(dt)
+                service_active_dates[s_id].discard(dt)
         except Exception:
             pass
 
+if all_dates_found:
+    min_global_date = min(all_dates_found)
+    max_global_date = max(all_dates_found)
+
 def get_giorni_validita(service_id):
-    return len(service_active_days.get(service_id, []))
+    return len(service_active_dates.get(service_id, []))
 
 trips['giorni_validita'] = trips['service_id'].apply(get_giorni_validita)
 
@@ -226,43 +234,52 @@ trip_full = trip_full.drop_duplicates(subset=['trip_id'])
 # ==========================================
 st.sidebar.markdown("### 🎛️ Filtri Globali")
 
-# 1. Filtro Giorni della Settimana (default: tutti selezionati)
-giorni_disponibili = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
-giorni_mappa = {
-    'Lunedì': 'monday', 'Martedì': 'tuesday', 'Mercoledì': 'wednesday', 
-    'Giovedì': 'thursday', 'Venerdì': 'friday', 'Sabato': 'saturday', 'Domenica': 'sunday'
-}
-giorni_scelti = st.sidebar.multiselect("Giorni di Servizio:", giorni_disponibili, default=giorni_disponibili)
+# 1. Filtro Intervallo Date di Calendario (Agile tramite date_input)
+intervallo_date = st.sidebar.date_input(
+    "Intervallo Date:",
+    value=(min_global_date, max_global_date),
+    min_value=min_global_date,
+    max_value=max_global_date
+)
 
-# 2. Filtro Fasce Orarie a blocchi di un'ora (default: tutte selezionate)
-fasce_orarie_disponibili = [f"{h:02d}:00 - {(h+1)%24:02d}:00" for h in range(24)]
-fasce_scelte = st.sidebar.multiselect("Fasce Orarie (Partenza):", fasce_orarie_disponibili, default=fasce_orarie_disponibili)
+# 2. Filtro Fascia Oraria (Agile tramite slider da 00:00 a 24:00)
+fascia_oraria = st.sidebar.slider(
+    "Fascia Oraria Partenza:",
+    min_value=0,
+    max_value=24,
+    value=(0, 24)
+)
 
-# Applicazione filtri globali sul dataframe principale
-if giorni_scelti and len(giorni_scelti) < len(giorni_disponibili):
-    colonne_gtfs_giorni = [giorni_mappa[g] for g in giorni_scelti]
+# --- APPLICAZIONE FILTRI GLOBALI ---
+# Filtraggio per data
+if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    start_f, end_f = intervallo_date
     valid_service_ids = [
-        s_id for s_id, flags in service_days_flags.items() 
-        if any(flags.get(col, False) for col in colonne_gtfs_giorni)
+        s_id for s_id, dates in service_active_dates.items()
+        if any(start_f <= d <= end_f for d in dates)
+    ]
+    trip_full = trip_full[trip_full['service_id'].isin(valid_service_ids)]
+elif isinstance(intervallo_date, date):
+    single_f = intervallo_date
+    valid_service_ids = [
+        s_id for s_id, dates in service_active_dates.items()
+        if single_f in dates
     ]
     trip_full = trip_full[trip_full['service_id'].isin(valid_service_ids)]
 
-if fasce_scelte and len(fasce_scelte) < len(fasce_orarie_disponibili):
-    ore_consentite = set()
-    for f in fasce_scelte:
-        ora_str = f.split(":")[0]
-        ore_consentite.add(ora_str)
-    
-    def match_ora(dep_time):
+# Filtraggio per fascia oraria (slider)
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
         if pd.isna(dep_time): return False
         try:
-            h = dep_time.split(":")[0]
-            if int(h) >= 24: h = f"{int(h)%24:02d}"
-            return h in ore_consentite
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
         except:
             return False
-
-    trip_full = trip_full[trip_full['departure_time'].apply(match_ora)]
+    trip_full = trip_full[trip_full['departure_time'].apply(match_fascia)]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
