@@ -306,7 +306,7 @@ fascia_oraria = st.sidebar.slider(
     value=(0, 24)
 )
 
-# --- APPLICAZIONE FILTRI GLOBALI ---
+# --- APPLICAZIONE FILTRI GLOBALI IN MODO SICURO ---
 def calc_valid_days_range(s_id, start_d, end_d):
     dates = service_active_dates.get(s_id, set())
     return sum(1 for d in dates if start_d <= d <= end_d)
@@ -325,4 +325,65 @@ elif isinstance(intervallo_date, date):
     trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_single(x, single_f))
     trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
 else:
-    trip_filtrato_temp
+    trip_filtrato_temp = trip_full
+
+# Fallback di sicurezza: se il filtro date restituisce 0 risultati, manteniamo il dataset base per non bloccare l'app
+if trip_filtrato_temp.empty:
+    st.sidebar.warning("⚠️ Nessuna corsa nel periodo selezionato. Uso l'intero dataset.")
+    trip_full = trip_full_base
+else:
+    trip_full = trip_filtrato_temp
+
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
+        except:
+            return False
+    trip_full_ora = trip_full[trip_full['departure_time'].apply(match_fascia)]
+    if not trip_full_ora.empty:
+        trip_full = trip_full_ora
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
+
+if "selected_trip_id" not in st.session_state:
+    st.session_state.selected_trip_id = None
+
+if "last_tipo_vista" not in st.session_state:
+    st.session_state.last_tipo_vista = None
+
+tipo_vista = st.sidebar.radio(
+    "Seleziona modalità:",
+    ["🏠 Home / Benvenuto", "🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+)
+
+if st.session_state.last_tipo_vista != tipo_vista:
+    st.session_state.selected_trip_id = None
+    st.session_state.last_tipo_vista = tipo_vista
+
+trip_id_selezionato = None
+df_linea = pd.DataFrame()
+modalità_classica = None
+comune_scelto = None
+
+if tipo_vista == "🧭 Navigazione Classica":
+    modalità_classica = st.sidebar.radio(
+        "Modalità Classica:", 
+        ["🔍 Corsa Singola", "🌐 Intera Linea"]
+    )
+    
+    # --- FILTRI PARALLELI (OPERATORI E LINEE) ---
+    tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
+    tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
+    
+    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", tutti_operatori, default=[])
+    
+    if operatori_scelti:
+        linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
+    else
