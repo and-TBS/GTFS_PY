@@ -251,7 +251,6 @@ try:
     trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
     stops_unique = stops.drop_duplicates(subset=['stop_id'])
 
-    # Passaggi puliti e separati per evitare errori di sintassi sulle parentesi
     m1 = pd.merge(trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], left_on='start_stop_id', right_on='stop_id', how='left')
     m1 = m1.rename(columns={'stop_name': 'fermata_partenza', 'comune': 'comune_partenza'})
     trip_endpoints = m1.drop(columns=['stop_id', 'start_stop_id'])
@@ -406,9 +405,4 @@ elif tipo_vista == "🏙️ Analisi per Comune":
 # ==========================================
 # PANNELLO PRINCIPALE
 # ==========================================
-if st.session_state.selected_trip_id is not None:
-    if st.button("⬅️ Torna alla schermata precedente"):
-        st.session_state.selected_trip_id = None
-        st.rerun()
-
-    trip_id_corrente = st.session_state.selected_trip_
+if st.session_state.selected_trip
