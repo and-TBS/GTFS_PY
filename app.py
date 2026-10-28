@@ -729,8 +729,8 @@ elif tipo_vista == "🧭 Navigazione Classica":
             with col_right:
                 st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
                 
-                # CORRETTO: Prende una corsa rappresentativa per ogni linea distinta (fino a un massimo di 20 linee)
-                sample_trip_ids = df_linea.drop_duplicates(subset=['route_id'])['trip_id'].tolist()[:20]
+                # CORRETTO: Prende una corsa rappresentativa per ogni linea distinta (fino a un massimo di 50 linee)
+                sample_trip_ids = df_linea.drop_duplicates(subset=['route_id'])['trip_id'].tolist()[:50]
                 
                 st_all = stop_times[stop_times['trip_id'].isin(sample_trip_ids)]
                 path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
