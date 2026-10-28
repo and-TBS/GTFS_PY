@@ -376,12 +376,13 @@ if tipo_vista == "🧭 Navigazione Classica":
         ["🔍 Corsa Singola", "🌐 Intera Linea"]
     )
     
-    # --- FILTRI PARALLELI (OPERATORI E LINEE) ---
+    # --- FILTRI PARALLELI A CASCATA BIDIREZIONALE ---
     tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
     tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
     
     operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", tutti_operatori, default=[])
     
+    # Seleziona le linee disponibili in base agli operatori scelti
     if operatori_scelti:
         linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
     else:
@@ -389,7 +390,14 @@ if tipo_vista == "🧭 Navigazione Classica":
         
     linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", linee_disponibili, default=[])
     
-    # Costruiamo il DataFrame filtrato combinando i filtri paralleli
+    # Se l'utente seleziona prima la linea, filtriamo gli operatori disponibili in base alla linea scelta
+    if linee_scelte:
+        operatori_disponibili = sorted(trip_full[trip_full['linea'].isin(linee_scelte)][route_operator_col].dropna().unique().tolist())
+        # Aggiorna dinamicamente se l'operatore scelto non corrisponde alla linea
+        if operatori_scelti:
+            operatori_scelti = [op for op in operatori_scelti if op in operatori_disponibili]
+
+    # Costruiamo il DataFrame filtrato combinando entrambi i filtri in modo incrociato
     df_linea = trip_full.copy()
     if operatori_scelti:
         df_linea = df_linea[df_linea[route_operator_col].isin(operatori_scelti)]
@@ -491,209 +499,4 @@ elif tipo_vista == "🏠 Home / Benvenuto":
     st.markdown("""
     1. **Filtri Globali (Barra a sinistra):** Seleziona il periodo temporale di interesse o la fascia oraria.
     2. **Tipo di Visualizzazione:** Scegli tra **Navigazione Classica** (per analizzare linee o corse singole filtrando per operatore e/o linea in parallelo) oppure **Analisi per Comune**.
-    3. **Interattività:** Clicca sulle icone di ricerca **🔍** nelle tabelle per aprire il dettaglio completo e la mappa interattiva di ogni singola corsa.
-    """)
-
-elif tipo_vista == "🏙️ Analisi per Comune":
-    if comune_scelto:
-        corse_partenza = trip_full[trip_full['comune_partenza'] == comune_scelto]
-        corse_arrivo = trip_full[trip_full['comune_arrivo'] == comune_scelto]
-        
-        stop_ids_comune = stops[stops['comune'] == comune_scelto]['stop_id'].tolist()
-        stop_times_comune = stop_times[stop_times['stop_id'].isin(stop_ids_comune)]
-        trip_ids_intermedi = stop_times_comune['trip_id'].unique()
-        
-        corse_transito = trip_full[
-            (trip_full['trip_id'].isin(trip_ids_intermedi)) & 
-            (trip_full['comune_partenza'] != comune_scelto) & 
-            (trip_full['comune_arrivo'] != comune_scelto)
-        ]
-
-        num_partenze_uniche = len(corse_partenza)
-        vol_partenze_totale = int(corse_partenza['giorni_validita'].sum())
-
-        num_arrivi_unici = len(corse_arrivo)
-        vol_arrivi_totale = int(corse_arrivo['giorni_validita'].sum())
-
-        num_transiti_unici = len(corse_transito)
-        vol_transiti_totale = int(corse_transito['giorni_validita'].sum())
-
-        col_title, col_kpi1, col_kpi2, col_kpi3 = st.columns([1.8, 1.1, 1.1, 1.1])
-        with col_title:
-            st.markdown(f"<div class='section-title'>🏙️ Analisi per il Comune: <b>{comune_scelto}</b></div>", unsafe_allow_html=True)
-        with col_kpi1:
-            st.metric(
-                "🚀 Partenze", 
-                f"{num_partenze_uniche} orari", 
-                delta=f"{vol_partenze_totale:,} tot corse"
-            )
-        with col_kpi2:
-            st.metric(
-                "🏁 Arrivi", 
-                f"{num_arrivi_unici} orari", 
-                delta=f"{vol_arrivi_totale:,} tot corse"
-            )
-        with col_kpi3:
-            st.metric(
-                "🚏 Transiti", 
-                f"{num_transiti_unici} orari", 
-                delta=f"{vol_transiti_totale:,} tot corse"
-            )
-
-        st.markdown("---")
-
-        tab_partenze, tab_arrivi, tab_transiti = st.tabs([
-            f"🚀 In Partenza ({num_partenze_uniche} orari | {vol_partenze_totale:,} tot)", 
-            f"🏁 In Arrivo ({num_arrivi_unici} orari | {vol_arrivi_totale:,} tot)", 
-            f"🚏 In Transito ({num_transiti_unici} orari | {vol_transiti_totale:,} tot)"
-        ])
-
-        with tab_partenze:
-            st.markdown("#### Corse in **partenza** da " + str(comune_scelto))
-            if not corse_partenza.empty:
-                for _, row in corse_partenza.iterrows():
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"part_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
-                        st.rerun()
-                    linea_str = str(row['linea'])
-                    dep_str = str(row['departure_time'])
-                    c2.markdown(
-                        f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", 
-                        unsafe_allow_html=True
-                    )
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
-            else:
-                st.info("Nessuna corsa in partenza per i filtri selezionati.")
-
-        with tab_arrivi:
-            st.markdown("#### Corse in **arrivo** a " + str(comune_scelto))
-            if not corse_arrivo.empty:
-                for _, row in corse_arrivo.iterrows():
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"arr_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
-                        st.rerun()
-                    linea_str = str(row['linea'])
-                    arr_str = str(row['arrival_time'])
-                    c2.markdown(
-                        f"<span class='table-text'><b>{linea_str}</b> 🕒 {arr_str}</span>", 
-                        unsafe_allow_html=True
-                    )
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
-            else:
-                st.info("Nessuna corsa in arrivo per i filtri selezionati.")
-
-        with tab_transiti:
-            st.markdown("#### Corse con **fermata intermedia** a " + str(comune_scelto))
-            if not corse_transito.empty:
-                for _, row in corse_transito.iterrows():
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-                    if c1.button("🔍", key=f"trans_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
-                        st.rerun()
-                    linea_str = str(row['linea'])
-                    dep_str = str(row['departure_time'])
-                    c2.markdown(
-                        f"<span class='table-text'><b>{linea_str}</b> 🕒 {dep_str}</span>", 
-                        unsafe_allow_html=True
-                    )
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
-            else:
-                st.info("Nessuna corsa in transito per i filtri selezionati.")
-    else:
-        st.info("Seleziona un comune dalla barra laterale.")
-
-elif tipo_vista == "🧭 Navigazione Classica":
-    if modalità_classica == "🔍 Corsa Singola":
-        if trip_id_selezionato is not None:
-            corsa_info = df_linea[df_linea['trip_id'] == trip_id_selezionato].iloc[0]
-            
-            info_box_text2 = (
-                "<b>🚍 Linea:</b> " + str(corsa_info['linea']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
-                "<b>🕒 Partenza:</b> " + str(corsa_info['fermata_partenza']) + " (" + str(corsa_info['comune_partenza']) + ") alle " + str(corsa_info['departure_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
-                "<b>🏁 Arrivo:</b> " + str(corsa_info['fermata_arrivo']) + " (" + str(corsa_info['comune_arrivo']) + ") alle " + str(corsa_info['arrival_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
-                "<b>📅 Giorni validità:</b> " + str(int(corsa_info['giorni_validita'])) + " giorni"
-            )
-            st.markdown(f'<div class="info-box">{info_box_text2}</div>', unsafe_allow_html=True)
-
-            st_trip = stop_times[stop_times['trip_id'] == trip_id_selezionato].sort_values('stop_sequence')
-            path_stops = pd.merge(st_trip, stops_unique, on='stop_id')
-
-            if not path_stops.empty:
-                col_left, col_right = st.columns([1.1, 1.3])
-                with col_left:
-                    st.markdown("<div class='section-title'>📋 Fermate e Orari di Passaggio</div>", unsafe_allow_html=True)
-                    df_tab_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
-                    df_tab_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-                    st.dataframe(df_tab_fermate, use_container_width=True, hide_index=True, height=720)
-                with col_right:
-                    st.markdown(f"<div class='section-title'>🗺️ Mappa Percorso (Corsa Selezionata)</div>", unsafe_allow_html=True)
-                    centro_lat, centro_lon = path_stops['stop_lat'].mean(), path_stops['stop_lon'].mean()
-                    m = folium.Map(location=[centro_lat, centro_lon], zoom_start=12, tiles="Esri.WorldStreetMap")
-                    coords = path_stops[['stop_lat', 'stop_lon']].values.tolist()
-                    folium.PolyLine(coords, color="blue", weight=4, opacity=0.8).add_to(m)
-                    for _, row in path_stops.iterrows():
-                        folium.Marker(
-                            location=[row['stop_lat'], row['stop_lon']],
-                            popup=f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']}",
-                            icon=folium.Icon(color='red', icon='bus', prefix='fa')
-                        ).add_to(m)
-                    st.components.v1.html(m._repr_html_(), height=720)
-        else:
-            st.info("Seleziona almeno un operatore o una linea e una corsa valida dalla barra laterale.")
-
-    elif modalità_classica == "🌐 Intera Linea":
-        if not df_linea.empty:
-            num_corse_linea = len(df_linea)
-            vol_corse_linea = int(df_linea['giorni_validita'].sum())
-
-            col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
-            with col_t:
-                st.markdown(
-                    f"<div class='section-title'>🌐 Panoramica Selezioni <span style='font-size:12px; color:gray; font-weight: normal;'>(Linee distinte: {len(df_linea['linea'].unique())})</span></div>", 
-                    unsafe_allow_html=True
-                )
-            with col_k1:
-                st.metric("🚌 Corse Distinte", f"{num_corse_linea} orari")
-            with col_k2:
-                st.metric("📊 Volume Totale", f"{vol_corse_linea:,} corse")
-            
-            st.markdown("---")
-
-            col_left, col_right = st.columns([1.4, 1.1])
-            with col_left:
-                st.markdown("<div class='section-title'>📋 Elenco corse filtrate</div>", unsafe_allow_html=True)
-                st.markdown("Clicca su **🔍** per visualizzare i dettagli della corsa.")
-                
-                for _, row in df_linea.iterrows():
-                    c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
-                    if c1.button("🔍", key=f"linea_btn_{row['trip_id']}"):
-                        st.session_state.selected_trip_id = row['trip_id']
-                        st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>🏁 {row['arrival_time']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c6.markdown(f"<span class='table-text'>📅 {int(row['giorni_validita'])}g</span>", unsafe_allow_html=True)
-            with col_right:
-                st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
-                trip_ids = df_linea['trip_id'].tolist()
-                st_all = stop_times[stop_times['trip_id'].isin(trip_ids)]
-                path_all = pd.merge(st_all, stops_unique, on='stop_id').drop_duplicates(subset=['stop_id'])
-                if not path_all.empty:
-                    m_lin = folium.Map(location=[path_all['stop_lat'].mean(), path_all['stop_lon'].mean()], zoom_start=11, tiles="Esri.WorldStreetMap")
-                    for t_id in trip_ids[:15]:
-                        st_t = stop_times[stop_times['trip_id'] == t_id].sort_values('stop_sequence')
-                        p_t = pd.merge(st_t, stops_unique, on='stop_id')
-                        if len(p_t) > 1:
-                            folium.PolyLine(p_t[['stop_lat', 'stop_lon']].values.tolist(), color="blue", weight=3, opacity=0.5).add_to(m_lin)
-                    st.components.v1.html(m_lin._repr_html_(), height=720)
-        else:
-            st.info("Nessuna corsa disponibile per i filtri selezionati.")
+    3
