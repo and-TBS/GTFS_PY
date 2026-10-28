@@ -376,28 +376,26 @@ if tipo_vista == "🧭 Navigazione Classica":
         ["🔍 Corsa Singola", "🌐 Intera Linea"]
     )
     
-    # --- FILTRI PARALLELI A CASCATA BIDIREZIONALE ---
+    # --- FILTRI A CASCATA BIDIREZIONALE (OPERATORE <-> LINEA) ---
     tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
     tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
     
-    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", tutti_operatori, default=[])
+    # 1. Creiamo prima il multiselect delle linee per consentire la selezione iniziale per linea
+    linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", tutte_linee, default=[])
     
-    # Seleziona le linee disponibili in base agli operatori scelti
-    if operatori_scelti:
-        linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
-    else:
-        linee_disponibili = tutte_linee
-        
-    linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", linee_disponibili, default=[])
-    
-    # Se l'utente seleziona prima la linea, filtriamo gli operatori disponibili in base alla linea scelta
+    # 2. Riduciamo gli operatori disponibili in base alle linee scelte
     if linee_scelte:
         operatori_disponibili = sorted(trip_full[trip_full['linea'].isin(linee_scelte)][route_operator_col].dropna().unique().tolist())
-        # Aggiorna dinamicamente se l'operatore scelto non corrisponde alla linea
-        if operatori_scelti:
-            operatori_scelti = [op for op in operatori_scelti if op in operatori_disponibili]
+    else:
+        operatori_disponibili = tutti_operatori
+        
+    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", operatori_disponibili, default=[])
+    
+    # Se viene scelto l'operatore dopo, restringiamo ulteriormente le linee disponibili a schermo
+    if operatori_scelti and not linee_scelte:
+        linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
 
-    # Costruiamo il DataFrame filtrato combinando entrambi i filtri in modo incrociato
+    # Costruiamo il DataFrame filtrato combinando entrambi i filtri incrociati
     df_linea = trip_full.copy()
     if operatori_scelti:
         df_linea = df_linea[df_linea[route_operator_col].isin(operatori_scelti)]
@@ -450,53 +448,4 @@ if st.session_state.selected_trip_id is not None:
                 st.markdown("<div class='section-title'>📋 Fermate e Orari di Passaggio</div>", unsafe_allow_html=True)
                 df_tabella_fermate = path_stops[['stop_sequence', 'stop_name', 'departure_time', 'comune']].copy()
                 df_tabella_fermate.columns = ['N°', 'Fermata', 'Orario', 'Comune']
-                st.dataframe(df_tabella_fermate, use_container_width=True, hide_index=True, height=720)
-                
-            with col_right:
-                st.markdown(f"<div class='section-title'>🗺️ Mappa Percorso (Linea {linea_corrente})</div>", unsafe_allow_html=True)
-                centro_lat = path_stops['stop_lat'].mean()
-                centro_lon = path_stops['stop_lon'].mean()
-                
-                m = folium.Map(location=[centro_lat, centro_lon], zoom_start=12, tiles="Esri.WorldStreetMap")
-                coords = path_stops[['stop_lat', 'stop_lon']].values.tolist()
-                folium.PolyLine(coords, color="blue", weight=4, opacity=0.8, tooltip=f"Linea {linea_corrente}").add_to(m)
-                
-                for _, row in path_stops.iterrows():
-                    popup_html = f"<b>{row['stop_name']}</b><br>Orario: {row.get('departure_time', '')}<br>Comune: {row['comune']} ({row['provincia']})"
-                    folium.Marker(
-                        location=[row['stop_lat'], row['stop_lon']],
-                        popup=popup_html,
-                        tooltip=row['stop_name'],
-                        icon=folium.Icon(color='red', icon='bus', prefix='fa')
-                    ).add_to(m)
-                
-                st.components.v1.html(m._repr_html_(), height=720)
-        else:
-            st.warning("Nessuna coordinata trovata per questa corsa.")
-    else:
-        st.warning("La corsa selezionata non è disponibile con i filtri attuali.")
-
-elif tipo_vista == "🏠 Home / Benvenuto":
-    st.markdown("""
-    <div class="hero-banner">
-        <h1>🚌 Dashboard Tratta e Orari GTFS</h1>
-        <p>Benvenuto nel sistema di analisi e visualizzazione dei trasporti pubblici. Usa i filtri nella barra laterale a sinistra per impostare date, fasce orarie e selezionare la modalità di esplorazione.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("📍 Fermate Totali", f"{len(stops):,}")
-    with c2:
-        st.metric("🌐 Linee Gestite", f"{len(routes):,}")
-    with c3:
-        st.metric("🚌 Corse Totali", f"{len(trips):,}")
-    with c4:
-        st.metric("🏢 Operatori", f"{len(routes[route_operator_col].unique()) if route_operator_col in routes.columns else 1}")
-
-    st.markdown("---")
-    st.markdown("### 💡 Come iniziare")
-    st.markdown("""
-    1. **Filtri Globali (Barra a sinistra):** Seleziona il periodo temporale di interesse o la fascia oraria.
-    2. **Tipo di Visualizzazione:** Scegli tra **Navigazione Classica** (per analizzare linee o corse singole filtrando per operatore e/o linea in parallelo) oppure **Analisi per Comune**.
-    3
+                st.dataframe(df_tabella
