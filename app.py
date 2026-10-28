@@ -234,7 +234,6 @@ trip_full = trip_full.drop_duplicates(subset=['trip_id'])
 # ==========================================
 st.sidebar.markdown("### 🎛️ Filtri Globali")
 
-# 1. Filtro Intervallo Date di Calendario (Agile tramite date_input)
 intervallo_date = st.sidebar.date_input(
     "Intervallo Date:",
     value=(min_global_date, max_global_date),
@@ -242,7 +241,6 @@ intervallo_date = st.sidebar.date_input(
     max_value=max_global_date
 )
 
-# 2. Filtro Fascia Oraria (Agile tramite slider da 00:00 a 24:00)
 fascia_oraria = st.sidebar.slider(
     "Fascia Oraria Partenza:",
     min_value=0,
@@ -251,7 +249,6 @@ fascia_oraria = st.sidebar.slider(
 )
 
 # --- APPLICAZIONE FILTRI GLOBALI ---
-# Filtraggio per data
 if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     start_f, end_f = intervallo_date
     valid_service_ids = [
@@ -267,7 +264,6 @@ elif isinstance(intervallo_date, date):
     ]
     trip_full = trip_full[trip_full['service_id'].isin(valid_service_ids)]
 
-# Filtraggio per fascia oraria (slider)
 h_min, h_max = fascia_oraria
 if (h_min, h_max) != (0, 24):
     def match_fascia(dep_time):
@@ -385,47 +381,87 @@ if is_corsa_cliccata:
         st.warning("Nessuna coordinata trovata per questa corsa.")
 
 elif tipo_vista == "🏙️ Analisi per Comune":
-    st.markdown(f"### 🏙️ Analisi per il Comune: **{comune_scelto}**")
-    st.markdown("Filtra le corse per tipologia e clicca su **🔍** per aprire la mappa dettagliata.")
+    # Calcolo preliminare dei sottoinsiemi per i KPI e le tabelle
+    corse_partenza = trip_full[trip_full['comune_partenza'] == comune_scelto]
+    corse_arrivo = trip_full[trip_full['comune_arrivo'] == comune_scelto]
+    
+    stop_ids_comune = stops[stops['comune'] == comune_scelto]['stop_id'].tolist()
+    stop_times_comune = stop_times[stop_times['stop_id'].isin(stop_ids_comune)]
+    trip_ids_intermedi = stop_times_comune['trip_id'].unique()
+    
+    corse_transito = trip_full[
+        (trip_full['trip_id'].isin(trip_ids_intermedi)) & 
+        (trip_full['comune_partenza'] != comune_scelto) & 
+        (trip_full['comune_arrivo'] != comune_scelto)
+    ]
 
-    filtro_tipo = st.radio(
-        "Seleziona tipologia corse:",
-        ["🚀 In partenza", "🏁 In arrivo", "🚏 In transito (intermedie)"],
-        horizontal=True
-    )
+    # Layout con titolo a sinistra e KPI metrici in alto a destra
+    col_title, col_kpi1, col_kpi2, col_kpi3 = st.columns([2.5, 1, 1, 1])
+    with col_title:
+        st.markdown(f"### 🏙️ Analisi per il Comune: **{comune_scelto}**")
+    with col_kpi1:
+        st.metric("🚀 Partenze", len(corse_partenza))
+    with col_kpi2:
+        st.metric("🏁 Arrivi", len(corse_arrivo))
+    with col_kpi3:
+        st.metric("🚏 Transiti", len(corse_transito))
 
     st.markdown("---")
 
-    if filtro_tipo == "🚀 In partenza":
-        st.markdown(f"#### Corse in **partenza** da {comune_scelto}")
-        corse_target = trip_full[trip_full['comune_partenza'] == comune_scelto]
-    elif filtro_tipo == "🏁 In arrivo":
-        st.markdown(f"#### Corse in **arrivo** a {comune_scelto}")
-        corse_target = trip_full[trip_full['comune_arrivo'] == comune_scelto]
-    else:
-        st.markdown(f"#### Corse con **fermata intermedia** a {comune_scelto}")
-        stop_ids_comune = stops[stops['comune'] == comune_scelto]['stop_id'].tolist()
-        stop_times_comune = stop_times[stop_times['stop_id'].isin(stop_ids_comune)]
-        trip_ids_intermedi = stop_times_comune['trip_id'].unique()
-        
-        corse_target = trip_full[
-            (trip_full['trip_id'].isin(trip_ids_intermedi)) & 
-            (trip_full['comune_partenza'] != comune_scelto) & 
-            (trip_full['comune_arrivo'] != comune_scelto)
-        ]
+    # Schede (Tabs) per visualizzare comodamente tutte e tre le categorie
+    tab_partenze, tab_arrivi, tab_transiti = st.tabs([
+        f"🚀 In Partenza ({len(corse_partenza)})", 
+        f"🏁 In Arrivo ({len(corse_arrivo)})", 
+        f"🚏 In Transito ({len(corse_transito)})"
+    ])
 
-    if not corse_target.empty:
-        for _, row in corse_target.iterrows():
-            c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
-            if c1.button("🔍", key=f"com_{row['trip_id']}_{filtro_tipo}"):
-                st.session_state.selected_trip_id = row['trip_id']
-                st.rerun()
-            c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row.get('departure_time', row.get('arrival_time', ''))}</span>", unsafe_allow_html=True)
-            c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
-            c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
-            c5.markdown(f"<span class='table-text'>📅 {row['giorni_validita']}g</span>", unsafe_allow_html=True)
-    else:
-        st.info("Nessuna corsa trovata per i criteri selezionati in questo comune.")
+    with tab_partenze:
+        st.markdown(f"#### Corse in **partenza** da {comune_scelto}")
+        if not corse_partenza.empty:
+            with st.container(height=600):
+                for _, row in corse_partenza.iterrows():
+                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    if c1.button("🔍", key=f"part_{row['trip_id']}"):
+                        st.session_state.selected_trip_id = row['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {row['giorni_validita']}g</span>", unsafe_allow_html=True)
+        else:
+            st.info("Nessuna corsa in partenza per i filtri selezionati.")
+
+    with tab_arrivi:
+        st.markdown(f"#### Corse in **arrivo** a {comune_scelto}")
+        if not corse_arrivo.empty:
+            with st.container(height=600):
+                for _, row in corse_arrivo.iterrows():
+                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    if c1.button("🔍", key=f"arr_{row['trip_id']}"):
+                        st.session_state.selected_trip_id = row['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['arrival_time']}</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {row['giorni_validita']}g</span>", unsafe_allow_html=True)
+        else:
+            st.info("Nessuna corsa in arrivo per i filtri selezionati.")
+
+    with tab_transiti:
+        st.markdown(f"#### Corse con **fermata intermedia** a {comune_scelto}")
+        if not corse_transito.empty:
+            with st.container(height=600):
+                for _, row in corse_transito.iterrows():
+                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    if c1.button("🔍", key=f"trans_{row['trip_id']}"):
+                        st.session_state.selected_trip_id = row['trip_id']
+                        st.rerun()
+                    c2.markdown(f"<span class='table-text'><b>{row['linea']}</b> 🕒 {row['departure_time']}</span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>Da: {row['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>A: {row['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>📅 {row['giorni_validita']}g</span>", unsafe_allow_html=True)
+        else:
+            st.info("Nessuna corsa in transito per i filtri selezionati.")
 
 else:
     # Navigazione Classica
