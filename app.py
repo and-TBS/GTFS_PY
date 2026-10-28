@@ -143,16 +143,18 @@ else:
     routes['agency_name'] = 'Operatore Unico'
     route_operator_col = 'agency_name'
 
-# --- CALCOLO GIORNI DI VALIDITÀ ---
+# --- CALCOLO GIORNI DI VALIDITÀ E SERVIZIO ---
 calendar_path = os.path.join(GTFS_DIR, 'calendar.txt')
 calendar_dates_path = os.path.join(GTFS_DIR, 'calendar_dates.txt')
 service_active_days = {}
+service_days_flags = {}
 
 if os.path.exists(calendar_path):
     calendar = pd.read_csv(calendar_path).drop_duplicates(subset=['service_id'])
     days_cols = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     for _, row in calendar.iterrows():
         s_id = row['service_id']
+        service_days_flags[s_id] = {d: row.get(d, 0) == 1 for d in days_cols}
         try:
             start = datetime.strptime(str(int(row['start_date'])), '%Y%m%d')
             end = datetime.strptime(str(int(row['end_date'])), '%Y%m%d')
@@ -220,8 +222,49 @@ trip_full = pd.merge(trip_full, routes[['route_id', 'linea', route_operator_col]
 trip_full = trip_full.drop_duplicates(subset=['trip_id'])
 
 # ==========================================
-# BARRA LATERALE: MENU PRINCIPALE E FILTRI
+# BARRA LATERALE: FILTRI GLOBALI E MENU
 # ==========================================
+st.sidebar.markdown("### 🎛️ Filtri Globali")
+
+# 1. Filtro Giorni della Settimana (default: tutti selezionati)
+giorni_disponibili = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+giorni_mappa = {
+    'Lunedì': 'monday', 'Martedì': 'tuesday', 'Mercoledì': 'wednesday', 
+    'Giovedì': 'thursday', 'Venerdì': 'friday', 'Sabato': 'saturday', 'Domenica': 'sunday'
+}
+giorni_scelti = st.sidebar.multiselect("Giorni di Servizio:", giorni_disponibili, default=giorni_disponibili)
+
+# 2. Filtro Fasce Orarie a blocchi di un'ora (default: tutte selezionate)
+fasce_orarie_disponibili = [f"{h:02d}:00 - {(h+1)%24:02d}:00" for h in range(24)]
+fasce_scelte = st.sidebar.multiselect("Fasce Orarie (Partenza):", fasce_orarie_disponibili, default=fasce_orarie_disponibili)
+
+# Applicazione filtri globali sul dataframe principale
+if giorni_scelti and len(giorni_scelti) < len(giorni_disponibili):
+    colonne_gtfs_giorni = [giorni_mappa[g] for g in giorni_scelti]
+    valid_service_ids = [
+        s_id for s_id, flags in service_days_flags.items() 
+        if any(flags.get(col, False) for col in colonne_gtfs_giorni)
+    ]
+    trip_full = trip_full[trip_full['service_id'].isin(valid_service_ids)]
+
+if fasce_scelte and len(fasce_scelte) < len(fasce_orarie_disponibili):
+    ore_consentite = set()
+    for f in fasce_scelte:
+        ora_str = f.split(":")[0]
+        ore_consentite.add(ora_str)
+    
+    def match_ora(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            h = dep_time.split(":")[0]
+            if int(h) >= 24: h = f"{int(h)%24:02d}"
+            return h in ore_consentite
+        except:
+            return False
+
+    trip_full = trip_full[trip_full['departure_time'].apply(match_ora)]
+
+st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
 
 tipo_vista = st.sidebar.radio(
