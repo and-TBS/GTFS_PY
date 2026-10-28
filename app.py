@@ -320,4 +320,104 @@ if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     start_f, end_f = intervallo_date
     trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_range(x, start_f, end_f))
     trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
-elif isinstance(interv
+elif isinstance(intervallo_date, date):
+    single_f = intervallo_date
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_single(x, single_f))
+    trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
+else:
+    trip_filtrato_temp = trip_full
+
+if trip_filtrato_temp.empty:
+    st.sidebar.warning("⚠️ Nessuna corsa trovata nel periodo selezionato. Mostro tutti i dati.")
+    trip_full = trip_full_base
+else:
+    trip_full = trip_filtrato_temp
+
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
+        except:
+            return False
+    trip_full = trip_full[trip_full['departure_time'].apply(match_fascia)]
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
+
+if "selected_trip_id" not in st.session_state:
+    st.session_state.selected_trip_id = None
+
+if "last_tipo_vista" not in st.session_state:
+    st.session_state.last_tipo_vista = None
+
+tipo_vista = st.sidebar.radio(
+    "Seleziona modalità:",
+    ["🏠 Home / Benvenuto", "🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+)
+
+if st.session_state.last_tipo_vista != tipo_vista:
+    st.session_state.selected_trip_id = None
+    st.session_state.last_tipo_vista = tipo_vista
+
+trip_id_selezionato = None
+df_linea = pd.DataFrame()
+modalità_classica = None
+comune_scelto = None
+
+if tipo_vista == "🧭 Navigazione Classica":
+    modalità_classica = st.sidebar.radio(
+        "Modalità Classica:", 
+        ["🔍 Corsa Singola", "🌐 Intera Linea"]
+    )
+    
+    # --- FILTRI PARALLELI (OPERATORI E LINEE) ---
+    tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
+    tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
+    
+    operatori_scelti = st.sidebar.multiselect("Filtra Operatore/i:", tutti_operatori, default=[])
+    
+    if operatori_scelti:
+        linee_disponibili = sorted(trip_full[trip_full[route_operator_col].isin(operatori_scelti)]['linea'].dropna().unique().tolist())
+    else:
+        linee_disponibili = tutte_linee
+        
+    linee_scelte = st.sidebar.multiselect("Filtra Linea/e:", linee_disponibili, default=[])
+    
+    # Costruiamo il DataFrame filtrato combinando i filtri paralleli
+    df_linea = trip_full.copy()
+    if operatori_scelti:
+        df_linea = df_linea[df_linea[route_operator_col].isin(operatori_scelti)]
+    if linee_scelte:
+        df_linea = df_linea[df_linea['linea'].isin(linee_scelte)]
+        
+    df_linea = df_linea.sort_values('departure_time')
+    
+    if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
+        df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + "]"
+        corse_disponibili = df_linea['descrizione_corsa'].tolist()
+        if corse_disponibili:
+            corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
+            trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
+
+elif tipo_vista == "🏙️ Analisi per Comune":
+    comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
+    comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
+
+# ==========================================
+# PANNELLO PRINCIPALE
+# ==========================================
+if st.session_state.selected_trip_id is not None:
+    if st.button("⬅️ Torna alla schermata precedente"):
+        st.session_state.selected_trip_id = None
+        st.rerun()
+
+    trip_id_corrente = st.session_state.selected_trip_id
+    corsa_subset = trip_full_base[trip_full_base['trip_id'] == trip_id_corrente]
+    
+    if not corsa_subset.empty:
+        corsa
