@@ -394,10 +394,9 @@ if tipo_vista == "🧭 Navigazione Classica":
         df_linea = df_linea[df_linea[route_operator_col].isin(operatori_scelti)]
     if linee_scelte:
         df_linea = df_linea[df_linea['linea'].isin(linee_scelte)]
-        
-    df_linea = df_linea.sort_values('departure_time')
     
     if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
+        df_linea = df_linea.sort_values('departure_time')
         df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + " - Op: " + df_linea[route_operator_col].astype(str) + "]"
         corse_disponibili = df_linea['descrizione_corsa'].tolist()
         if corse_disponibili:
@@ -530,6 +529,26 @@ elif tipo_vista == "🏙️ Analisi per Comune":
 
         st.markdown("---")
 
+        # --- CONTROLLI DI ORDINAMENTO PER COMUNE ---
+        col_ord1, col_ord2, _ = st.columns([2, 2, 4])
+        with col_ord1:
+            criterio_ord_comune = st.selectbox("Ordina per:", ["Orario", "Linea", "Operatore", "Giorni di validità"], key="ord_com")
+        with col_ord2:
+            direzione_ord_comune = st.radio("Direzione:", ["Crescente (A-Z / 0-9)", "Discendente (Z-A / 9-0)"], horizontal=True, key="dir_com")
+        
+        ascendente_comune = True if "Crescente" in direzione_ord_comune else False
+        map_col_comune = {
+            "Orario": "departure_time",
+            "Linea": "linea",
+            "Operatore": route_operator_col,
+            "Giorni di validità": "giorni_validita"
+        }
+        col_ordinamento_c = map_col_comune.get(criterio_ord_comune, "departure_time")
+
+        corse_partenza = corse_partenza.sort_values(by=col_ordinamento_c, ascending=ascendente_comune)
+        corse_arrivo = corse_arrivo.sort_values(by=col_ordinamento_c, ascending=ascendente_comune)
+        corse_transito = corse_transito.sort_values(by=col_ordinamento_c, ascending=ascendente_comune)
+
         tab_partenze, tab_arrivi, tab_transiti = st.tabs([
             f"🚀 In Partenza ({num_partenze_uniche} orari | {vol_partenze_totale:,} tot)", 
             f"🏁 In Arrivo ({num_arrivi_unici} orari | {vol_arrivi_totale:,} tot)", 
@@ -652,6 +671,23 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 st.metric("📊 Volume Totale", f"{vol_corse_linea:,} corse")
             
             st.markdown("---")
+
+            # --- CONTROLLI DI ORDINAMENTO PER INTERA LINEA ---
+            col_ord1, col_ord2, _ = st.columns([2, 2, 4])
+            with col_ord1:
+                criterio_ord_linea = st.selectbox("Ordina per:", ["Orario", "Linea", "Operatore", "Giorni di validità"], key="ord_lin")
+            with col_ord2:
+                direzione_ord_linea = st.radio("Direzione:", ["Crescente (A-Z / 0-9)", "Discendente (Z-A / 9-0)"], horizontal=True, key="dir_lin")
+            
+            ascendente_linea = True if "Crescente" in direzione_ord_linea else False
+            map_col_linea = {
+                "Orario": "departure_time",
+                "Linea": "linea",
+                "Operatore": route_operator_col,
+                "Giorni di validità": "giorni_validita"
+            }
+            col_ordinamento_l = map_col_linea.get(criterio_ord_linea, "departure_time")
+            df_linea = df_linea.sort_values(by=col_ordinamento_l, ascending=ascendente_linea)
 
             col_left, col_right = st.columns([1.4, 1.1])
             with col_left:
