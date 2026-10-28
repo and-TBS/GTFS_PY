@@ -76,9 +76,16 @@ st.markdown("""
     [data-testid="stMetricLabel"] {
         font-size: 12px !important;
     }
+    
+    /* --- NUOVA REGOLA STICKY POTENZIATA --- */
+    [data-testid="column"]:nth-of-type(2) {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 5rem;
+        height: fit-content;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 GTFS_DIR = "."
 GEOJSON_FILE = "Piemonte.geojson"
 
