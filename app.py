@@ -376,7 +376,7 @@ if tipo_vista == "🧭 Navigazione Classica":
         ["🔍 Corsa Singola", "🌐 Intera Linea"]
     )
     
-    # --- FILTRI A CASCATA BIDIREZIONALE OTTIMIZZATI E VELOCI ---
+    # --- FILTRI FLUIDI E VELOCI ---
     tutti_operatori = sorted(trip_full[route_operator_col].dropna().unique().tolist())
     tutte_linee = sorted(trip_full['linea'].dropna().unique().tolist())
     
@@ -398,7 +398,7 @@ if tipo_vista == "🧭 Navigazione Classica":
     df_linea = df_linea.sort_values('departure_time')
     
     if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
-        df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + "]"
+        df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + " - Op: " + df_linea[route_operator_col].astype(str) + "]"
         corse_disponibili = df_linea['descrizione_corsa'].tolist()
         if corse_disponibili:
             corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
@@ -422,12 +422,13 @@ if st.session_state.selected_trip_id is not None:
     if not corsa_subset.empty:
         corsa_info = corsa_subset.iloc[0]
         linea_corrente = corsa_info['linea']
+        operatore_corrente = corsa_info[route_operator_col]
 
         info_box_text = (
             "<b>🚍 Linea:</b> " + str(linea_corrente) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+            "<b>🏢 Operatore:</b> " + str(operatore_corrente) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
             "<b>🕒 Partenza:</b> " + str(corsa_info['fermata_partenza']) + " (" + str(corsa_info['comune_partenza']) + ") alle " + str(corsa_info['departure_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
-            "<b>🏁 Arrivo:</b> " + str(corsa_info['fermata_arrivo']) + " (" + str(corsa_info['comune_arrivo']) + ") alle " + str(corsa_info['arrival_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
-            "<b>📅 Giorni validità:</b> " + str(int(corsa_info['giorni_validita'])) + " giorni"
+            "<b>📅 Giorni:</b> " + str(int(corsa_info['giorni_validita'])) + " giorni"
         )
         st.markdown(f'<div class="info-box">{info_box_text}</div>', unsafe_allow_html=True)
 
@@ -521,23 +522,11 @@ elif tipo_vista == "🏙️ Analisi per Comune":
         with col_title:
             st.markdown(f"<div class='section-title'>🏙️ Analisi per il Comune: <b>{comune_scelto}</b></div>", unsafe_allow_html=True)
         with col_kpi1:
-            st.metric(
-                "🚀 Partenze", 
-                f"{num_partenze_uniche} orari", 
-                delta=f"{vol_partenze_totale:,} tot corse"
-            )
+            st.metric("🚀 Partenze", f"{num_partenze_uniche} orari", delta=f"{vol_partenze_totale:,} tot corse")
         with col_kpi2:
-            st.metric(
-                "🏁 Arrivi", 
-                f"{num_arrivi_unici} orari", 
-                delta=f"{vol_arrivi_totale:,} tot corse"
-            )
+            st.metric("🏁 Arrivi", f"{num_arrivi_unici} orari", delta=f"{vol_arrivi_totale:,} tot corse")
         with col_kpi3:
-            st.metric(
-                "🚏 Transiti", 
-                f"{num_transiti_unici} orari", 
-                delta=f"{vol_transiti_totale:,} tot corse"
-            )
+            st.metric("🚏 Transiti", f"{num_transiti_unici} orari", delta=f"{vol_transiti_totale:,} tot corse")
 
         st.markdown("---")
 
@@ -552,14 +541,15 @@ elif tipo_vista == "🏙️ Analisi per Comune":
             if not corse_partenza.empty:
                 for idx, row in enumerate(corse_partenza.head(100).iterrows()):
                     row_data = row[1]
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"part_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} ➔ {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
                 if len(corse_partenza) > 100:
                     st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
@@ -570,14 +560,15 @@ elif tipo_vista == "🏙️ Analisi per Comune":
             if not corse_arrivo.empty:
                 for idx, row in enumerate(corse_arrivo.head(100).iterrows()):
                     row_data = row[1]
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"arr_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['arrival_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['arrival_time']} ➔ {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
                 if len(corse_arrivo) > 100:
                     st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
@@ -588,14 +579,15 @@ elif tipo_vista == "🏙️ Analisi per Comune":
             if not corse_transito.empty:
                 for idx, row in enumerate(corse_transito.head(100).iterrows()):
                     row_data = row[1]
-                    c1, c2, c3, c4, c5 = st.columns([0.8, 2, 2.5, 2.5, 1])
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"trans_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} (Da: {row_data['fermata_partenza']})</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
                 if len(corse_transito) > 100:
                     st.caption("⚠️ Mostrate le prime 100 corse per ottimizzare le prestazioni.")
             else:
@@ -610,6 +602,7 @@ elif tipo_vista == "🧭 Navigazione Classica":
             
             info_box_text2 = (
                 "<b>🚍 Linea:</b> " + str(corsa_info['linea']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
+                "<b>🏢 Operatore:</b> " + str(corsa_info[route_operator_col]) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
                 "<b>🕒 Partenza:</b> " + str(corsa_info['fermata_partenza']) + " (" + str(corsa_info['comune_partenza']) + ") alle " + str(corsa_info['departure_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
                 "<b>🏁 Arrivo:</b> " + str(corsa_info['fermata_arrivo']) + " (" + str(corsa_info['comune_arrivo']) + ") alle " + str(corsa_info['arrival_time']) + " &nbsp;&nbsp;|&nbsp;&nbsp; "
                 "<b>📅 Giorni validità:</b> " + str(int(corsa_info['giorni_validita'])) + " giorni"
@@ -667,14 +660,14 @@ elif tipo_vista == "🧭 Navigazione Classica":
                 
                 for idx, row in enumerate(df_linea.head(100).iterrows()):
                     row_data = row[1]
-                    c1, c2, c3, c4, c5, c6 = st.columns([0.8, 1.8, 2.6, 1.8, 2.6, 1])
+                    c1, c2, c3, c4, c5, c6 = st.columns([0.6, 1.5, 2, 2.2, 2.2, 0.8])
                     if c1.button("🔍", key=f"linea_btn_{row_data['trip_id']}_{idx}"):
                         st.session_state.selected_trip_id = row_data['trip_id']
                         st.rerun()
-                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b> 🕒 {row_data['departure_time']}</span>", unsafe_allow_html=True)
-                    c3.markdown(f"<span class='table-text'>Da: {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
-                    c4.markdown(f"<span class='table-text'>🏁 {row_data['arrival_time']}</span>", unsafe_allow_html=True)
-                    c5.markdown(f"<span class='table-text'>A: {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
+                    c2.markdown(f"<span class='table-text'><b>{row_data['linea']}</b></span>", unsafe_allow_html=True)
+                    c3.markdown(f"<span class='table-text'>🏢 {row_data[route_operator_col]}</span>", unsafe_allow_html=True)
+                    c4.markdown(f"<span class='table-text'>🕒 {row_data['departure_time']} ➔ {row_data['fermata_partenza']}</span>", unsafe_allow_html=True)
+                    c5.markdown(f"<span class='table-text'>🏁 {row_data['fermata_arrivo']}</span>", unsafe_allow_html=True)
                     c6.markdown(f"<span class='table-text'>📅 {int(row_data['giorni_validita'])}g</span>", unsafe_allow_html=True)
                 
                 if len(df_linea) > 100:
