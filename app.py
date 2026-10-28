@@ -327,9 +327,7 @@ elif isinstance(intervallo_date, date):
 else:
     trip_filtrato_temp = trip_full
 
-# Fallback di sicurezza: se il filtro date restituisce 0 risultati, manteniamo il dataset base per non bloccare l'app
 if trip_filtrato_temp.empty:
-    st.sidebar.warning("⚠️ Nessuna corsa nel periodo selezionato. Uso l'intero dataset.")
     trip_full = trip_full_base
 else:
     trip_full = trip_filtrato_temp
