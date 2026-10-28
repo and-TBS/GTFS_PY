@@ -11,7 +11,7 @@ import folium
 st.set_page_config(
     page_title="Dashboard Trasporti GTFS",
     page_icon="🚌",
-    layout="wide"
+    layout="centered"
 )
 
 st.markdown("""
