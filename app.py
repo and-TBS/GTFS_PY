@@ -283,4 +283,87 @@ if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     start_f, end_f = intervallo_date
     trip_full_filtrato['giorni_validita'] = trip_full_filtrato['service_id'].apply(lambda x: calc_valid_days_range(x, start_f, end_f))
     trip_filtrato_temp = trip_full_filtrato[trip_full_filtrato['giorni_validita'] > 0]
-elif isinstance(
+elif isinstance(intervallo_date, date):
+    single_f = intervallo_date
+    trip_full_filtrato['giorni_validita'] = trip_full_filtrato['service_id'].apply(lambda x: calc_valid_days_single(x, single_f))
+    trip_filtrato_temp = trip_full_filtrato[trip_full_filtrato['giorni_validita'] > 0]
+else:
+    trip_filtrato_temp = trip_full_filtrato
+
+if trip_filtrato_temp.empty:
+    st.sidebar.warning("⚠️ Nessuna corsa trovata nel periodo selezionato. Mostro tutti i dati.")
+    trip_full = trip_full_filtrato
+else:
+    trip_full = trip_filtrato_temp
+
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
+        except:
+            return False
+    trip_full = trip_full[trip_full['departure_time'].apply(match_fascia)]
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
+
+# --- GESTIONE STATO SELEZIONE CORSA ---
+if "selected_trip_id" not in st.session_state:
+    st.session_state.selected_trip_id = None
+
+if "last_tipo_vista" not in st.session_state:
+    st.session_state.last_tipo_vista = None
+
+tipo_vista = st.sidebar.radio(
+    "Seleziona modalità:",
+    ["🏠 Home / Benvenuto", "🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+)
+
+# Se l'utente cambia modalità dal menu, resettiamo la corsa selezionata
+if st.session_state.last_tipo_vista != tipo_vista:
+    st.session_state.selected_trip_id = None
+    st.session_state.last_tipo_vista = tipo_vista
+
+trip_id_selezionato = None
+df_linea = pd.DataFrame()
+linea_scelta = None
+operatore_scelto = None
+modalità_classica = None
+comune_scelto = None
+
+if tipo_vista == "🧭 Navigazione Classica":
+    modalità_classica = st.sidebar.radio(
+        "Modalità Classica:", 
+        ["🔍 Corsa Singola", "🌐 Intera Linea", "🏢 Intero Operatore"]
+    )
+    
+    operatori_disponibili = sorted(trip_full[route_operator_col].dropna().unique().tolist())
+    operatore_scelto = st.sidebar.selectbox("Operatore:", operatori_disponibili) if operatori_disponibili else None
+    
+    df_op = trip_full[trip_full[route_operator_col] == operatore_scelto] if operatore_scelto else pd.DataFrame()
+    
+    if modalità_classica != "🏢 Intero Operatore" and not df_op.empty:
+        linee_disponibili = sorted(df_op['linea'].dropna().unique().tolist())
+        linea_scelta = st.sidebar.selectbox("Linea:", linee_disponibili) if linee_disponibili else None
+        df_linea = df_op[df_op['linea'] == linea_scelta].sort_values('departure_time') if linea_scelta else pd.DataFrame()
+        
+        if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
+            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ")"
+            corse_disponibili = df_linea['descrizione_corsa'].tolist()
+            if corse_disponibili:
+                corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
+                trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
+
+elif tipo_vista == "🏙️ Analisi per Comune":
+    comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
+    comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
+
+is_corsa_cliccata = st.session_state.selected_trip_id is not None
+
+# ==========================================
+# PANNELLO
