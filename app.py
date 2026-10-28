@@ -659,16 +659,26 @@ elif tipo_vista == "🧭 Navigazione Classica":
             num_corse_linea = len(df_linea)
             vol_corse_linea = int(df_linea['giorni_validita'].sum())
 
-            col_t, col_k1, col_k2 = st.columns([2, 1.2, 1.2])
+            col_t, col_k1, col_k2, col_dl = st.columns([1.6, 1, 1, 1.2])
             with col_t:
                 st.markdown(
-                    f"<div class='section-title'>🌐 Panoramica Selezioni <span style='font-size:12px; color:gray; font-weight: normal;'>(Linee distinte: {len(df_linea['linea'].unique())})</span></div>", 
+                    f"<div class='section-title'>🌐 Panoramica Selezioni <span style='font-size:12px; color:gray; font-weight: normal;'>(Linee: {len(df_linea['linea'].unique())})</span></div>", 
                     unsafe_allow_html=True
                 )
             with col_k1:
-                st.metric("🚌 Corse Distinte", f"{num_corse_linea} orari")
+                st.metric("🚌 Corse", f"{num_corse_linea}")
             with col_k2:
-                st.metric("📊 Volume Totale", f"{vol_corse_linea:,} corse")
+                st.metric("📊 Volume", f"{vol_corse_linea:,}")
+            with col_dl:
+                st.markdown("<div style='padding-top: 5px;'></div>", unsafe_allow_html=True)
+                csv_data = df_linea.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Scarica CSV Linea",
+                    data=csv_data,
+                    file_name="corse_linea_filtrate.csv",
+                    mime="text/csv",
+                    key="download_btn_linea"
+                )
             
             st.markdown("---")
 
