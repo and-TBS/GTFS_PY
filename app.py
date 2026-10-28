@@ -247,4 +247,6 @@ fascia_oraria = st.sidebar.slider(
 )
 
 # --- APPLICAZIONE FILTRI GLOBALI ---
-if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2
+if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    start_f, end_f = intervallo_date
+    def calc_valid_days_range(s_id):
