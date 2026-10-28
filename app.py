@@ -257,13 +257,4 @@ try:
 
     trip_endpoints = pd.merge(
         trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
-        left_on='end_stop_id', right_on='stop_id', how='left'
-    ).rename(columns={'stop_name': 'fermata_arrivo', 'comune': 'comune_arrivo'}).drop(columns=['stop_id', 'end_stop_id'])
-except Exception as e:
-    st.error(f"❌ **Errore nell'elaborazione degli orari (stop_times):** {e}")
-    st.stop()
-
-# Gestione Operatore
-if agency is not None and 'agency_id' in routes.columns and 'agency_id' in agency.columns:
-    routes = pd.merge(routes, agency[['agency_id', 'agency_name']], on='agency_id', how='left')
-    route
+        left_on='end_stop_id', right_on
