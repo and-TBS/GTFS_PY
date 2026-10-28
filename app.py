@@ -727,7 +727,7 @@ elif tipo_vista == "🧭 Navigazione Classica":
                     st.caption("⚠️ Mostrate le prime 1000 corse per ottimizzare le prestazioni. Usa i filtri per restringere la ricerca.")
 
             with col_right:
-                st.markdown("<div class='section-title'>🗺️ Mappa Cumulativa Filtrata</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>🗺️ Mappa Filtrata (max 50 linee)</div>", unsafe_allow_html=True)
                 
                 # CORRETTO: Prende una corsa rappresentativa per ogni linea distinta (fino a un massimo di 50 linee)
                 sample_trip_ids = df_linea.drop_duplicates(subset=['route_id'])['trip_id'].tolist()[:50]
