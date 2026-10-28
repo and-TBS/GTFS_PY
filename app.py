@@ -247,6 +247,96 @@ fascia_oraria = st.sidebar.slider(
 )
 
 # --- APPLICAZIONE FILTRI GLOBALI ---
+def calc_valid_days_range(s_id, start_d, end_d):
+    dates = service_active_dates.get(s_id, set())
+    return sum(1 for d in dates if start_d <= d <= end_d)
+
+def calc_valid_days_single(s_id, single_d):
+    return 1 if single_d in service_active_dates.get(s_id, set()) else 0
+
 if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
     start_f, end_f = intervallo_date
-    def calc_valid_days_range(s_id):
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_range(x, start_f, end_f))
+    trip_full = trip_full[trip_full['giorni_validita'] > 0]
+elif isinstance(intervallo_date, date):
+    single_f = intervallo_date
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_single(x, single_f))
+    trip_full = trip_full[trip_full['giorni_validita'] > 0]
+
+h_min, h_max = fascia_oraria
+if (h_min, h_max) != (0, 24):
+    def match_fascia(dep_time):
+        if pd.isna(dep_time): return False
+        try:
+            parts = dep_time.split(":")
+            h = int(parts[0])
+            if h >= 24: h = h % 24
+            return h_min <= h < h_max
+        except:
+            return False
+    trip_full = trip_full[trip_full['departure_time'].apply(match_fascia)]
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔍 Tipo di Visualizzazione")
+
+tipo_vista = st.sidebar.radio(
+    "Seleziona modalità:",
+    ["🧭 Navigazione Classica", "🏙️ Analisi per Comune"]
+)
+
+trip_id_selezionato = None
+df_linea = pd.DataFrame()
+linea_scelta = None
+operatore_scelto = None
+modalità_classica = None
+
+if tipo_vista == "🧭 Navigazione Classica":
+    modalità_classica = st.sidebar.radio(
+        "Modalità Classica:", 
+        ["🔍 Corsa Singola", "🌐 Intera Linea", "🏢 Intero Operatore"]
+    )
+    
+    operatori_disponibili = sorted(trip_full[route_operator_col].dropna().unique().tolist())
+    operatore_scelto = st.sidebar.selectbox("Operatore:", operatori_disponibili) if operatori_disponibili else None
+    
+    df_op = trip_full[trip_full[route_operator_col] == operatore_scelto] if operatore_scelto else pd.DataFrame()
+    
+    if modalità_classica != "🏢 Intero Operatore" and not df_op.empty:
+        linee_disponibili = sorted(df_op['linea'].dropna().unique().tolist())
+        linea_scelta = st.sidebar.selectbox("Linea:", linee_disponibili) if linee_disponibili else None
+        df_linea = df_op[df_op['linea'] == linea_scelta].sort_values('departure_time') if linea_scelta else pd.DataFrame()
+        
+        if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
+            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ")"
+            corse_disponibili = df_linea['descrizione_corsa'].tolist()
+            if corse_disponibili:
+                corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
+                trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
+
+else:
+    comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
+    comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
+
+# ==========================================
+# GESTIONE STATO PER APPROFONDIMENTO CORSA
+# ==========================================
+if "selected_trip_id" not in st.session_state:
+    st.session_state.selected_trip_id = None
+
+is_corsa_cliccata = st.session_state.selected_trip_id is not None
+
+# ==========================================
+# PANNELLO PRINCIPALE
+# ==========================================
+if is_corsa_cliccata:
+    if st.button("⬅️ Torna alla schermata precedente"):
+        st.session_state.selected_trip_id = None
+        st.rerun()
+
+    trip_id_corrente = st.session_state.selected_trip_id
+    corsa_info = trip_full[trip_full['trip_id'] == trip_id_corrente].iloc[0]
+    linea_corrente = corsa_info['linea']
+
+    st.markdown(f"""
+    <div class="info-box">
+        <b>🚍 Linea:</b> {linea_corrente} &nbsp;&
