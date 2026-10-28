@@ -232,4 +232,92 @@ if err:
     st.stop()
 
 stops = elabora_associazione_comuni(stops)
-service_active_dates, min_global_date, max_global_date = elabora_calendario_e
+service_active_dates, min_global_date, max_global_date = elabora_calendario_e_date()
+
+def get_giorni_validita(service_id):
+    return len(service_active_dates.get(service_id, set()))
+
+trips['giorni_validita'] = trips['service_id'].apply(get_giorni_validita).astype(int)
+
+# Elaborazione capolinea e endpoint delle corse
+try:
+    stop_times['stop_sequence'] = pd.to_numeric(stop_times['stop_sequence'])
+    stop_times = stop_times.sort_values(['trip_id', 'stop_sequence'])
+
+    first_stops = stop_times.groupby('trip_id').first().reset_index()[['trip_id', 'stop_id', 'departure_time']]
+    first_stops.rename(columns={'stop_id': 'start_stop_id'}, inplace=True)
+    last_stops = stop_times.groupby('trip_id').last().reset_index()[['trip_id', 'stop_id', 'arrival_time']]
+    last_stops.rename(columns={'stop_id': 'end_stop_id'}, inplace=True)
+
+    trip_endpoints = pd.merge(first_stops, last_stops, on='trip_id')
+    stops_unique = stops.drop_duplicates(subset=['stop_id'])
+
+    trip_endpoints = pd.merge(
+        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
+        left_on='start_stop_id', right_on='stop_id', how='left'
+    ).rename(columns={'stop_name': 'fermata_partenza', 'comune': 'comune_partenza'}).drop(columns=['stop_id', 'start_stop_id'])
+
+    trip_endpoints = pd.merge(
+        trip_endpoints, stops_unique[['stop_id', 'stop_name', 'comune']], 
+        left_on='end_stop_id', right_on='stop_id', how='left'
+    ).rename(columns={'stop_name': 'fermata_arrivo', 'comune': 'comune_arrivo'}).drop(columns=['stop_id', 'end_stop_id'])
+except Exception as e:
+    st.error(f"❌ **Errore nell'elaborazione degli orari (stop_times):** {e}")
+    st.stop()
+
+# Gestione Operatore
+if agency is not None and 'agency_id' in routes.columns and 'agency_id' in agency.columns:
+    routes = pd.merge(routes, agency[['agency_id', 'agency_name']], on='agency_id', how='left')
+    route_operator_col = 'agency_name'
+elif agency is not None and len(agency) > 0:
+    routes['agency_name'] = agency['agency_name'].iloc[0]
+    route_operator_col = 'agency_name'
+else:
+    routes['agency_name'] = 'Operatore Unico'
+    route_operator_col = 'agency_name'
+
+# Dataset completo di riserva
+trip_full_base = pd.merge(trip_endpoints, trips, on='trip_id', how='left')
+trip_full_base = pd.merge(trip_full_base, routes[['route_id', 'linea', route_operator_col]], on='route_id', how='left')
+trip_full_base = trip_full_base.drop_duplicates(subset=['trip_id'])
+
+# ==========================================
+# BARRA LATERALE: FILTRI GLOBALI E MENU
+# ==========================================
+st.sidebar.markdown("### 🎛️ Filtri Globali")
+
+usa_intero_periodo = st.sidebar.checkbox("📅 Seleziona intero periodo disponibile", value=True)
+
+if usa_intero_periodo:
+    intervallo_date = (min_global_date, max_global_date)
+    st.sidebar.caption(f"Periodo attivo: {min_global_date.strftime('%d/%m/%Y')} ➔ {max_global_date.strftime('%d/%m/%Y')}")
+else:
+    intervallo_date = st.sidebar.date_input(
+        "Intervallo Date:",
+        value=(min_global_date, max_global_date),
+        min_value=min_global_date,
+        max_value=max_global_date
+    )
+
+fascia_oraria = st.sidebar.slider(
+    "Fascia Oraria Partenza:",
+    min_value=0,
+    max_value=24,
+    value=(0, 24)
+)
+
+# --- APPLICAZIONE FILTRI GLOBALI ---
+def calc_valid_days_range(s_id, start_d, end_d):
+    dates = service_active_dates.get(s_id, set())
+    return sum(1 for d in dates if start_d <= d <= end_d)
+
+def calc_valid_days_single(s_id, single_d):
+    return 1 if single_d in service_active_dates.get(s_id, set()) else 0
+
+trip_full = trip_full_base.copy()
+
+if isinstance(intervallo_date, tuple) and len(intervallo_date) == 2:
+    start_f, end_f = intervallo_date
+    trip_full['giorni_validita'] = trip_full['service_id'].apply(lambda x: calc_valid_days_range(x, start_f, end_f))
+    trip_filtrato_temp = trip_full[trip_full['giorni_validita'] > 0]
+elif isinstance(interv
