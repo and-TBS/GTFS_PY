@@ -368,41 +368,4 @@ operatori_scelti = []
 modalità_classica = None
 comune_scelto = None
 
-if tipo_vista == "🧭 Navigazione Classica":
-    modalità_classica = st.sidebar.radio(
-        "Modalità Classica:", 
-        ["🔍 Corsa Singola", "🌐 Intera Linea", "🏢 Intero Operatore"]
-    )
-    
-    operatori_disponibili = sorted(trip_full[route_operator_col].dropna().unique().tolist())
-    operatori_scelti = st.sidebar.multiselect("Operatore/i:", operatori_disponibili, default=[])
-    
-    if not operatori_scelti:
-        df_op = trip_full.copy()
-    else:
-        df_op = trip_full[trip_full[route_operator_col].isin(operatori_scelti)]
-    
-    if modalità_classica != "🏢 Intero Operatore" and not df_op.empty:
-        linee_disponibili = sorted(df_op['linea'].dropna().unique().tolist())
-        linee_scelte = st.sidebar.multiselect("Linea/e:", linee_disponibili, default=[])
-        
-        if not linee_scelte:
-            df_linea = df_op.sort_values('departure_time')
-        else:
-            df_linea = df_op[df_op['linea'].isin(linee_scelte)].sort_values('departure_time')
-        
-        if modalità_classica == "🔍 Corsa Singola" and not df_linea.empty:
-            df_linea['descrizione_corsa'] = df_linea['departure_time'] + " ➔ " + df_linea['fermata_arrivo'] + " (" + df_linea['comune_partenza'].astype(str) + ") [Linea: " + df_linea['linea'].astype(str) + "]"
-            corse_disponibili = df_linea['descrizione_corsa'].tolist()
-            if corse_disponibili:
-                corsa_scelta = st.sidebar.selectbox("Orario di Partenza:", corse_disponibili)
-                trip_id_selezionato = df_linea[df_linea['descrizione_corsa'] == corsa_scelta]['trip_id'].values[0]
-
-elif tipo_vista == "🏙️ Analisi per Comune":
-    comuni_globali_disponibili = sorted([str(c) for c in trip_full['comune_partenza'].dropna().unique() if c != "N.D."])
-    comune_scelto = st.sidebar.selectbox("🏙️ Seleziona Comune (X):", comuni_globali_disponibili) if comuni_globali_disponibili else None
-
-# ==========================================
-# PANNELLO PRINCIPALE
-# ==========================================
-if st.session_state.selected_trip
+if tipo_vista == "🧭 Navigazione Classica
